@@ -68,8 +68,9 @@ resource "aws_route_table" "smartfinance_public_rt" {
 resource "aws_route_table_association" "smartfinance_public_rta" {
   subnet_id      = aws_subnet.smartfinance_public_subnet.id
   route_table_id = aws_route_table.smartfinance_public_rt.id
-}# S
-ecurity Group
+}
+
+# Security Group
 resource "aws_security_group" "smartfinance_sg" {
   name_prefix = "smartfinance-sg"
   vpc_id      = aws_vpc.smartfinance_vpc.id
@@ -139,7 +140,7 @@ resource "aws_security_group" "smartfinance_sg" {
 # Key Pair
 resource "aws_key_pair" "smartfinance_key" {
   key_name   = "smartfinance-key"
-  public_key = var.public_key
+  public_key = var.ssh_public_key
 
   tags = {
     Name        = "smartfinance-key"
@@ -161,9 +162,7 @@ resource "aws_instance" "smartfinance_server" {
     encrypted   = true
   }
 
-  user_data = base64encode(templatefile("${path.module}/user-data.sh", {
-    environment = var.environment
-  }))
+  user_data = base64encode(file("${path.module}/user-data-minimal.sh"))
 
   tags = {
     Name        = "smartfinance-server"
