@@ -165,7 +165,10 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - nginx
+      backend:
+        condition: service_healthy
+      payment-service:
+        condition: service_healthy
     networks:
       - smartfinance-network
     deploy:

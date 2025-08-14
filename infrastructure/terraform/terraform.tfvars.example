@@ -1,14 +1,14 @@
 # SmartFinance Terraform Variables
 # Copy this file to terraform.tfvars and update the values
 
-# AWS Configuration
-aws_region = "us-east-1"
+aws_region    = "us-east-1"
+environment   = "production"
+instance_type = "t3.medium"
 
-# Project Configuration
-project_name = "smartfinance"
-environment  = "production"
+# Generate SSH key pair:
+# ssh-keygen -t rsa -b 4096 -f ~/.ssh/smartfinance_key
+# Then paste the content of ~/.ssh/smartfinance_key.pub below
+public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC... your-public-key-here"
 
-# SSH Key Configuration
-# Generate with: ssh-keygen -t rsa -b 4096 -f ~/.ssh/smartfinance-key
-# Then copy the content of ~/.ssh/smartfinance-key.pub here
-ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDRswjjjRDeE+6q0HWcWnzM3YUQ9bSeywBiuASu0uZihMKkSTz9VywNI9u4gvhD8CqiGGIMWDUtebekN76zGgwWZ3MqkdL5zPnJ3B2Ko6t2LGTWrOcLLJmWJaMazK7uO+pJUiDoHwO13UDxm5z2hj/pagE2S2gLdfbG5IrO5nUkr9144mSAkFfDSoNggXesX8ghqrIXd4i4247kqHZEAg37oeezoSOOFsS12rGi+5gadxO9uf9tb3uFO04xobeFXk9fe/pgX4vZ9Dfco2Os4fblq8v/MvZN5NBfnX4/0Ix6E6Tgth+T+cQcy6b34LozHGmF6MAFMAAxY4AkPE9SndjvFU6e1jNQ7DTJEb8kmGk1sTlf/xo/A3J2Ro4pkQkzsmfhNI8qFYOVLlF6tRV4ZaMH505gVCC8JMZpFViWc6sHs7zx7H+K3vjZiBJ0ieajTmwr3LMF/mbegi4Rrz9IS73Fn+sb3TafkVFFMQXwSTArxV8ArgKz+UrRdU547HRKlWYBnKEsnPq59K6lVVB2ScjjHesADtWvre3MMlFvF+2vlnmuXi4Je1cf0DFWRlFtVI6LrYRWLymTmwMsQ18QW24ggZvQM6LPS/WltigmSKqpmBvnkTZDJAYUJu1/xMOyubp317gKKKPdBmUa4NalXaRNYeXak6U/9vpgmAqU6lMXNQ== smartfinance-deployment"
+# Optional: Custom domain name
+domain_name = "smartfinance.yourdomain.com"
