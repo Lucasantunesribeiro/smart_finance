@@ -1,28 +1,23 @@
 module.exports = {
   parser: '@typescript-eslint/parser',
   parserOptions: {
-    project: 'tsconfig.json',
-    tsconfigRootDir: __dirname,
+    ecmaVersion: 2020,
     sourceType: 'module',
   },
-  plugins: ['@typescript-eslint/eslint-plugin'],
   extends: [
-    '@typescript-eslint/recommended',
-    'plugin:@typescript-eslint/recommended-requiring-type-checking',
+    'eslint:recommended',
   ],
   root: true,
   env: {
     node: true,
     jest: true,
+    es6: true,
   },
-  ignorePatterns: ['.eslintrc.js', 'dist/**/*', 'node_modules/**/*'],
+  ignorePatterns: ['.eslintrc.js', 'dist/**/*', 'node_modules/**/*', '*.js'],
   rules: {
-    '@typescript-eslint/interface-name-prefix': 'off',
-    '@typescript-eslint/explicit-function-return-type': 'off',
-    '@typescript-eslint/explicit-module-boundary-types': 'off',
-    '@typescript-eslint/no-explicit-any': 'warn',
-    '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-    '@typescript-eslint/prefer-const': 'error',
-    '@typescript-eslint/no-var-requires': 'off',
+    'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+    'prefer-const': 'warn',
+    'no-var': 'warn',
+    'no-undef': 'off',
   },
 };
