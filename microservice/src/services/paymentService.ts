@@ -70,7 +70,7 @@ export class PaymentService {
           riskFactors: fraudCheck.riskFactors,
         });
 
-        throw new Error('Payment failed fraud check');
+        throw new Error('Transaction flagged as high risk');
       }
 
       const processingResult = await this.processPaymentWithProvider(payment);
@@ -283,6 +283,9 @@ export class PaymentService {
       return payment.status;
     } catch (error) {
       logger.error('Error getting payment status:', error);
+      if (error instanceof Error && error.message === 'Payment not found') {
+        throw error;
+      }
       throw new Error('Failed to get payment status');
     }
   }
@@ -305,6 +308,9 @@ export class PaymentService {
       return this.mapToPaymentResponse(payment);
     } catch (error) {
       logger.error('Error cancelling payment:', error);
+      if (error instanceof Error && (error.message === 'Payment not found' || error.message === 'Payment cannot be cancelled')) {
+        throw error;
+      }
       throw new Error('Failed to cancel payment');
     }
   }

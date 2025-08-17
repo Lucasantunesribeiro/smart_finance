@@ -43,8 +43,8 @@ jobs:
           cd frontend
           npm run build
         env:
-          NEXT_PUBLIC_API_URL: https://your-backend-url.railway.app
-          NEXT_PUBLIC_PAYMENT_API_URL: https://your-payment-url.railway.app
+          NEXT_PUBLIC_API_URL: http://34.203.238.219:3000/api/v1
+          NEXT_PUBLIC_PAYMENT_API_URL: http://34.203.238.219:3000/payment
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
