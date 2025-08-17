@@ -38,7 +38,7 @@ services:
       - ASPNETCORE_URLS=http://+:5000
       - ConnectionStrings__DefaultConnection=mongodb://admin:smartfinance123@mongodb:27017/smartfinance?authSource=admin
       - JWT_SECRET=${JWT_SECRET:-your-super-secure-jwt-secret-change-this-in-production}
-      - CORS_ORIGINS=http://localhost:3000,http://localhost
+      - CORS_ORIGINS=http://34.203.238.219:3000,http://34.203.238.219,http://localhost:3000,http://localhost
     depends_on:
       mongodb:
         condition: service_healthy
@@ -108,8 +108,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.prod
       args:
-        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:5000/api/v1}
-        - NEXT_PUBLIC_PAYMENT_API_URL=${NEXT_PUBLIC_PAYMENT_API_URL:-http://localhost:3001/payment}
+        - NEXT_PUBLIC_API_URL=http://34.203.238.219:5000/api/v1
+        - NEXT_PUBLIC_PAYMENT_API_URL=http://34.203.238.219:3001/payment
     container_name: smartfinance-frontend
     restart: unless-stopped
     environment:
