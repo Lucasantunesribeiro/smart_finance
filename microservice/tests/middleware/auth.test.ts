@@ -1,6 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { authMiddleware, requireRole } from '../../src/middleware/auth';
 
+interface RequestWithUser extends Request {
+  user?: any;
+}
+
 // Mock jsonwebtoken
 jest.mock('jsonwebtoken', () => ({
   verify: jest.fn(),
@@ -15,7 +19,7 @@ jest.mock('../../src/utils/logger', () => ({
 }));
 
 describe('Auth Middleware', () => {
-  let mockRequest: Partial<Request>;
+  let mockRequest: Partial<RequestWithUser>;
   let mockResponse: Partial<Response>;
   let nextFunction: NextFunction;
 
@@ -46,7 +50,7 @@ describe('Auth Middleware', () => {
 
       jwt.verify.mockReturnValue(mockUser);
 
-      await authMiddleware(mockRequest as Request, mockResponse as Response, nextFunction);
+      await authMiddleware(mockRequest as RequestWithUser, mockResponse as Response, nextFunction);
 
       expect(mockRequest.user).toEqual(mockUser);
       expect(nextFunction).toHaveBeenCalled();
@@ -54,7 +58,7 @@ describe('Auth Middleware', () => {
     });
 
     it('should reject request without authorization header', async () => {
-      await authMiddleware(mockRequest as Request, mockResponse as Response, nextFunction);
+      await authMiddleware(mockRequest as RequestWithUser, mockResponse as Response, nextFunction);
 
       expect(mockResponse.status).toHaveBeenCalledWith(401);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -69,7 +73,7 @@ describe('Auth Middleware', () => {
         authorization: 'InvalidFormat token',
       };
 
-      await authMiddleware(mockRequest as Request, mockResponse as Response, nextFunction);
+      await authMiddleware(mockRequest as RequestWithUser, mockResponse as Response, nextFunction);
 
       expect(mockResponse.status).toHaveBeenCalledWith(401);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -90,7 +94,7 @@ describe('Auth Middleware', () => {
         throw new Error('Invalid token');
       });
 
-      await authMiddleware(mockRequest as Request, mockResponse as Response, nextFunction);
+      await authMiddleware(mockRequest as RequestWithUser, mockResponse as Response, nextFunction);
 
       expect(mockResponse.status).toHaveBeenCalledWith(401);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -113,7 +117,7 @@ describe('Auth Middleware', () => {
         throw error;
       });
 
-      await authMiddleware(mockRequest as Request, mockResponse as Response, nextFunction);
+      await authMiddleware(mockRequest as RequestWithUser, mockResponse as Response, nextFunction);
 
       expect(mockResponse.status).toHaveBeenCalledWith(401);
       expect(mockResponse.json).toHaveBeenCalledWith({

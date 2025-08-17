@@ -27,19 +27,22 @@ export const errorHandler = (
   // Handle specific error types
   if (err.name === 'ValidationError') {
     statusCode = 400;
-    message = 'Validation Error';
+    message = 'Validation failed';
   } else if (err.name === 'CastError') {
     statusCode = 400;
     message = 'Invalid ID format';
   } else if (err.name === 'MongoError' && (err as any).code === 11000) {
-    statusCode = 400;
-    message = 'Duplicate field value';
+    statusCode = 409;
+    const field = Object.keys((err as any).keyValue || {})[0] || 'field';
+    message = `Duplicate value for field: ${field}`;
   } else if (err.name === 'JsonWebTokenError') {
     statusCode = 401;
-    message = 'Invalid token';
+    message = 'Invalid authentication token';
   } else if (err.name === 'TokenExpiredError') {
     statusCode = 401;
-    message = 'Token expired';
+    message = 'Authentication token has expired';
+  } else if (err.statusCode) {
+    statusCode = err.statusCode;
   }
 
   // Don't leak error details in production
@@ -47,11 +50,30 @@ export const errorHandler = (
     message = 'Internal Server Error';
   }
 
-  res.status(statusCode).json({
+  // Handle empty message
+  if (!message || message.trim() === '') {
+    message = 'Internal server error';
+  }
+
+  const response: any = {
     status,
     message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
-  });
+    timestamp: new Date().toISOString(),
+    path: req.url,
+  };
+
+  // Add validation errors if applicable
+  if (err.name === 'ValidationError' && (err as any).errors) {
+    const errors = Object.values((err as any).errors).map((error: any) => error.message);
+    response.errors = errors;
+  }
+
+  // Add stack trace in development
+  if (process.env.NODE_ENV === 'development') {
+    response.stack = err.stack;
+  }
+
+  res.status(statusCode).json(response);
 };
 
 export const createError = (message: string, statusCode: number = 500): AppError => {

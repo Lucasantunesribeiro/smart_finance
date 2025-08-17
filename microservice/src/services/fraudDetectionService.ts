@@ -18,9 +18,9 @@ interface FraudCheckResult {
 
 export class FraudDetectionService {
   private readonly riskThresholds = {
-    high: 80,
-    medium: 60,
-    low: 40,
+    high: 50,
+    medium: 30,
+    low: 20,
   };
 
   async checkTransaction(request: FraudCheckRequest): Promise<FraudCheckResult> {
@@ -31,6 +31,7 @@ export class FraudDetectionService {
       riskScore += this.checkAmountRisk(request.amount, riskFactors);
       riskScore += this.checkFrequencyRisk(request.userId, riskFactors);
       riskScore += this.checkPaymentMethodRisk(request.paymentMethod, riskFactors);
+      riskScore += this.checkCurrencyRisk(request.currency, riskFactors);
       riskScore += this.checkLocationRisk(request.metadata, riskFactors);
       riskScore += this.checkTimeRisk(riskFactors);
       riskScore += this.checkUserBehaviorRisk(request.userId, riskFactors);
@@ -67,13 +68,13 @@ export class FraudDetectionService {
 
   private checkAmountRisk(amount: number, riskFactors: string[]): number {
     if (amount > 10000) {
-      riskFactors.push('High transaction amount');
+      riskFactors.push('large_amount');
       return 30;
     } else if (amount > 5000) {
-      riskFactors.push('Medium transaction amount');
+      riskFactors.push('medium_amount');
       return 15;
     } else if (amount > 1000) {
-      riskFactors.push('Moderate transaction amount');
+      riskFactors.push('moderate_amount');
       return 5;
     }
     return 0;
@@ -95,16 +96,27 @@ export class FraudDetectionService {
   private checkPaymentMethodRisk(paymentMethod: PaymentMethod, riskFactors: string[]): number {
     switch (paymentMethod) {
       case PaymentMethod.CRYPTOCURRENCY:
-        riskFactors.push('Cryptocurrency payment method');
-        return 20;
+        riskFactors.push('high_risk_payment_method');
+        return 40;
       case PaymentMethod.DIGITAL_WALLET:
-        riskFactors.push('Digital wallet payment method');
+        riskFactors.push('medium_risk_payment_method');
         return 10;
       case PaymentMethod.BANK_TRANSFER:
         return 5;
       default:
         return 0;
     }
+  }
+
+  private checkCurrencyRisk(currency: string, riskFactors: string[]): number {
+    const unusualCurrencies = ['XRP', 'BTC', 'ETH', 'LTC', 'DOGE'];
+    
+    if (unusualCurrencies.includes(currency)) {
+      riskFactors.push('unusual_currency');
+      return 25;
+    }
+    
+    return 0;
   }
 
   private checkLocationRisk(metadata: Record<string, any> | undefined, riskFactors: string[]): number {

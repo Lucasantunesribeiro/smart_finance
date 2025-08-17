@@ -230,7 +230,7 @@ export const AddTransactionDialog = ({
                     </SelectItem>
                   ))
                 ) : (
-                  <SelectItem value="" disabled>No accounts available</SelectItem>
+                  <SelectItem value="no-accounts" disabled>No accounts available</SelectItem>
                 )}
               </SelectContent>
             </Select>

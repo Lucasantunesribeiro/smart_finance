@@ -8,7 +8,7 @@ const paymentService = new PaymentService();
 // Process payment
 router.post('/process', authMiddleware, async (req, res, next) => {
   try {
-    const payment = await paymentService.processPayment(req.body);
+    const payment = await paymentService.processPayment(req.body.id);
     res.status(201).json({
       status: 'success',
       data: payment

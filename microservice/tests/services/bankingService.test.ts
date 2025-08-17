@@ -139,9 +139,11 @@ describe('BankingService', () => {
       const result = await bankingService.reconcileTransactions(bankTransactionId, paymentId);
 
       expect(result).toBeDefined();
-      expect(result.bankTransactionId).toBe(bankTransactionId);
-      expect(result.paymentId).toBe(paymentId);
-      expect(result.status).toBe(ReconciliationStatus.MATCHED);
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBeGreaterThan(0);
+      expect(result[0].bankTransactionId).toBe(bankTransactionId);
+      expect(result[0].paymentId).toBe(paymentId);
+      expect(result[0].status).toBe(ReconciliationStatus.MATCHED);
     });
 
     it('should handle reconciliation with notes', async () => {
@@ -155,7 +157,10 @@ describe('BankingService', () => {
         notes
       );
 
-      expect(result.notes).toBe(notes);
+      expect(result).toBeDefined();
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBeGreaterThan(0);
+      expect(result[0].notes).toBe(notes);
     });
 
     it('should throw error for missing bank transaction ID', async () => {

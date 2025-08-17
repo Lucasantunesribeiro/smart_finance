@@ -212,7 +212,7 @@ describe('Banking Routes', () => {
     });
 
     it('should handle pagination parameters', async () => {
-      const mockTransactions = [];
+      const mockTransactions: any[] = [];
       mockBankingService.getTransactionHistory.mockResolvedValue(mockTransactions);
 
       const response = await request(app)
@@ -240,7 +240,7 @@ describe('Banking Routes', () => {
         updatedAt: new Date(),
       };
 
-      mockBankingService.reconcileTransactions.mockResolvedValue(mockReconciliation);
+      mockBankingService.reconcileTransactions.mockResolvedValue([mockReconciliation]);
 
       const reconciliationData = {
         bankTransactionId: 'bank-txn-123',

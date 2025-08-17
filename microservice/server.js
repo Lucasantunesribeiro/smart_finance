@@ -1012,9 +1012,9 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(5001, '0.0.0.0', () => {
-  console.log('🚀 SmartFinance Final Backend running on port 5001');
-  console.log('🔍 Health check: http://localhost:5001/health');
+server.listen(5002, '0.0.0.0', () => {
+  console.log('🚀 SmartFinance Final Backend running on port 5002');
+  console.log('🔍 Health check: http://localhost:5002/health');
   console.log('💾 Complete CRUD: Transactions, Categories, Accounts, Budgets');
   console.log('🛡️ Smart deletion with data preservation');
   console.log('📊 Full Analytics suite');
