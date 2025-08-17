@@ -43,7 +43,7 @@ describe('Error Handler Middleware', () => {
 
   it('should handle errors with custom status codes', () => {
     const error = new Error('Not found') as any;
-    error.status = 404;
+    error.statusCode = 404;
 
     errorHandler(error, mockRequest as Request, mockResponse as Response, nextFunction);
 

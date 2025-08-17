@@ -99,6 +99,11 @@ export class BankingService {
     try {
       logger.info('Fetching transaction history', { accountId, limit, offset });
       
+      // Validações
+      if (!accountId) {
+        throw new Error('Account ID is required');
+      }
+      
       // TODO: Implement real transaction history retrieval from database
       return [];
     } catch (error) {
