@@ -167,7 +167,7 @@ export const EditTransactionDialog = ({ transaction, onSuccess, children }: Edit
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="type">Type</Label>
-              <Select value={formData.type} onValueChange={(value) => handleInputChange('type', value)}>
+              <Select value={formData.type || undefined} onValueChange={(value) => handleInputChange('type', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
@@ -192,7 +192,7 @@ export const EditTransactionDialog = ({ transaction, onSuccess, children }: Edit
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="category">Category</Label>
-              <Select value={formData.categoryId} onValueChange={(value) => handleInputChange('categoryId', value)}>
+              <Select value={formData.categoryId || undefined} onValueChange={(value) => handleInputChange('categoryId', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
@@ -207,7 +207,7 @@ export const EditTransactionDialog = ({ transaction, onSuccess, children }: Edit
             </div>
             <div className="space-y-2">
               <Label htmlFor="account">Account</Label>
-              <Select value={formData.accountId} onValueChange={(value) => handleInputChange('accountId', value)}>
+              <Select value={formData.accountId || undefined} onValueChange={(value) => handleInputChange('accountId', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select account" />
                 </SelectTrigger>

@@ -36,13 +36,15 @@ export class FraudDetectionService {
       riskScore += this.checkTimeRisk(riskFactors);
       riskScore += this.checkUserBehaviorRisk(request.userId, riskFactors);
 
-      const isHighRisk = riskScore >= this.riskThresholds.high;
+      // Normalize riskScore to 0-1 range (divide by 100)
+      const normalizedRiskScore = riskScore / 100;
+      const isHighRisk = normalizedRiskScore >= (this.riskThresholds.high / 100);
       const recommendation = this.getRecommendation(riskScore);
 
       logger.info('Fraud check completed', {
         userId: request.userId,
         amount: request.amount,
-        riskScore,
+        riskScore: normalizedRiskScore,
         riskFactors,
         isHighRisk,
         recommendation,
@@ -50,7 +52,7 @@ export class FraudDetectionService {
 
       return {
         isHighRisk,
-        riskScore,
+        riskScore: normalizedRiskScore,
         riskFactors,
         recommendation,
       };

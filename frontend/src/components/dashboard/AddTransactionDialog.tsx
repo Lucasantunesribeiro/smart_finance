@@ -178,7 +178,7 @@ export const AddTransactionDialog = ({
 
           <div className="space-y-2">
             <Label htmlFor="type">Type *</Label>
-            <Select value={formData.type} onValueChange={(value) => handleInputChange('type', value)} required>
+            <Select value={formData.type || undefined} onValueChange={(value) => handleInputChange('type', value)} required>
               <SelectTrigger>
                 <SelectValue placeholder="Select transaction type" />
               </SelectTrigger>
@@ -192,7 +192,7 @@ export const AddTransactionDialog = ({
 
           <div className="space-y-2">
             <Label htmlFor="category">Category *</Label>
-            <Select value={formData.categoryId} onValueChange={(value) => handleInputChange('categoryId', value)} required>
+            <Select value={formData.categoryId || undefined} onValueChange={(value) => handleInputChange('categoryId', value)} required>
               <SelectTrigger>
                 <SelectValue placeholder="Select category (required)" />
               </SelectTrigger>
@@ -218,7 +218,7 @@ export const AddTransactionDialog = ({
 
           <div className="space-y-2">
             <Label htmlFor="accountId">Account</Label>
-            <Select value={formData.accountId} onValueChange={(value) => handleInputChange('accountId', value)}>
+            <Select value={formData.accountId || undefined} onValueChange={(value) => handleInputChange('accountId', value)}>
               <SelectTrigger>
                 <SelectValue placeholder={accounts.length > 0 ? "Select account (optional)" : "No accounts available"} />
               </SelectTrigger>
