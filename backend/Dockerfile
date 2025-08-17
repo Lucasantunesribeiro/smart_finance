@@ -1,43 +1,70 @@
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+# Multi-stage build optimized for t2.micro instance
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS base
 WORKDIR /app
 EXPOSE 5000
 
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
 WORKDIR /src
 
-# Copy csproj files and restore dependencies
+# Copy csproj files and restore dependencies (layer caching optimization)
 COPY ["src/SmartFinance.WebApi/SmartFinance.WebApi.csproj", "src/SmartFinance.WebApi/"]
 COPY ["src/SmartFinance.Application/SmartFinance.Application.csproj", "src/SmartFinance.Application/"]
 COPY ["src/SmartFinance.Domain/SmartFinance.Domain.csproj", "src/SmartFinance.Domain/"]
 COPY ["src/SmartFinance.Infrastructure/SmartFinance.Infrastructure.csproj", "src/SmartFinance.Infrastructure/"]
 
-RUN dotnet restore "src/SmartFinance.WebApi/SmartFinance.WebApi.csproj"
+RUN dotnet restore "src/SmartFinance.WebApi/SmartFinance.WebApi.csproj" \
+    --runtime alpine-x64
 
-# Copy everything else and build
+# Copy source code and build
 COPY . .
 WORKDIR "/src/src/SmartFinance.WebApi"
-RUN dotnet build "SmartFinance.WebApi.csproj" -c Release -o /app/build
 
+# Build with optimizations for production
+RUN dotnet build "SmartFinance.WebApi.csproj" \
+    -c Release \
+    -o /app/build \
+    --runtime alpine-x64 \
+    --self-contained false \
+    --no-restore
+
+# Publish stage
 FROM build AS publish
-RUN dotnet publish "SmartFinance.WebApi.csproj" -c Release -o /app/publish
+RUN dotnet publish "SmartFinance.WebApi.csproj" \
+    -c Release \
+    -o /app/publish \
+    --runtime alpine-x64 \
+    --self-contained false \
+    --no-restore \
+    /p:PublishTrimmed=false
 
-FROM base AS final
+# Production stage - optimized for memory usage
+FROM base AS production
 WORKDIR /app
 
-# Install curl for health checks
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+# Create application directories
+RUN mkdir -p /app/data /app/logs && \
+    addgroup -g 1001 -S smartfinance && \
+    adduser -S smartfinance -u 1001 -G smartfinance
 
-# Create directories for logs
-RUN mkdir -p /app/logs
+# Copy published application
+COPY --from=publish --chown=smartfinance:smartfinance /app/publish .
 
-COPY --from=publish /app/publish .
-
-# Create non-root user
-RUN groupadd -r smartfinance && useradd -r -g smartfinance smartfinance
+# Set proper permissions
 RUN chown -R smartfinance:smartfinance /app
+
 USER smartfinance
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:5000/health || exit 1
+# Environment variables for production
+ENV ASPNETCORE_ENVIRONMENT=Production
+ENV ASPNETCORE_URLS=http://+:5000
+ENV DOTNET_RUNNING_IN_CONTAINER=true
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+
+# Optimized health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:5000/health || exit 1
 
 ENTRYPOINT ["dotnet", "SmartFinance.WebApi.dll"]

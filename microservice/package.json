@@ -49,7 +49,9 @@
     "ts-jest": "^29.1.1",
     "eslint": "^8.53.0",
     "supertest": "^6.3.3",
-    "@types/supertest": "^2.0.16"
+    "@types/supertest": "^2.0.16",
+    "mongodb-memory-server": "^9.1.1",
+    "ts-node": "^10.9.1"
   },
   "keywords": [
     "microservice",

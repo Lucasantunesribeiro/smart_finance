@@ -1,0 +1,37 @@
+services:
+  # MongoDB - Ultra minimal
+  mongodb:
+    image: mongo:5.0-focal
+    container_name: smartfinance-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: SmartFinance123!
+      MONGO_INITDB_DATABASE: smartfinance
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+    command: mongod --wiredTigerCacheSizeGB 0.25 --quiet --logpath /dev/null --nojournal
+    mem_limit: 250m
+    memswap_limit: 250m
+
+  # Simple Status Page
+  status:
+    image: nginx:alpine
+    container_name: smartfinance-status
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./status.html:/usr/share/nginx/html/index.html:ro
+    mem_limit: 30m
+    memswap_limit: 30m
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  default:
+    name: smartfinance-network

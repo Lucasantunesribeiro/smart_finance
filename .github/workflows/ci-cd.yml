@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  packages: write
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -105,22 +111,39 @@ jobs:
   security-scan:
     runs-on: ubuntu-latest
     name: Security Scan
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     
     steps:
     - uses: actions/checkout@v4
     
     - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@master
+      uses: aquasecurity/trivy-action@0.24.0
       with:
         scan-type: 'fs'
         scan-ref: '.'
         format: 'sarif'
         output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH,MEDIUM'
+        exit-code: '0'
+        ignore-unfixed: true
+        skip-dirs: 'node_modules,bin,obj,.git'
     
     - name: Upload Trivy scan results to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v3
+      if: always()
       with:
         sarif_file: 'trivy-results.sarif'
+        category: 'trivy-fs-scan'
+    
+    - name: Upload scan results as artifact
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: trivy-scan-results
+        path: trivy-results.sarif
 
   build-and-push-images:
     needs: [test-backend, test-frontend, test-microservice]

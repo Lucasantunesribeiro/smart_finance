@@ -88,6 +88,9 @@ jobs:
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
         echo "✅ SSH configuration completed"
+      env:
+        EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+        EC2_HOST: ${{ secrets.EC2_HOST }}
 
     - name: 🚀 Deploy to EC2
       run: |

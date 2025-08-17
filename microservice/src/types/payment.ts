@@ -1,14 +1,31 @@
+export enum PaymentStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+  CANCELLED = 'cancelled',
+  REFUNDED = 'refunded',
+}
+
+export enum PaymentMethod {
+  CREDIT_CARD = 'credit_card',
+  DEBIT_CARD = 'debit_card',
+  BANK_TRANSFER = 'bank_transfer',
+  DIGITAL_WALLET = 'digital_wallet',
+  CRYPTOCURRENCY = 'cryptocurrency',
+}
+
 export interface PaymentRequest {
-  id: string;
+  id?: string;
   userId: string;
   amount: number;
   currency: string;
-  description: string;
   paymentMethod: PaymentMethod;
+  description?: string;
   metadata?: Record<string, any>;
   externalId?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface PaymentResponse {
@@ -24,105 +41,70 @@ export interface PaymentResponse {
   metadata?: Record<string, any>;
 }
 
-export enum PaymentMethod {
-  CREDIT_CARD = 'credit_card',
-  DEBIT_CARD = 'debit_card',
-  BANK_TRANSFER = 'bank_transfer',
-  DIGITAL_WALLET = 'digital_wallet',
-  CRYPTOCURRENCY = 'cryptocurrency',
+export interface FraudCheckRequest {
+  userId: string;
+  amount: number;
+  currency: string;
+  paymentMethod: PaymentMethod;
+  metadata?: Record<string, any>;
 }
 
-export enum PaymentStatus {
-  PENDING = 'pending',
-  PROCESSING = 'processing',
-  COMPLETED = 'completed',
-  FAILED = 'failed',
-  CANCELLED = 'cancelled',
-  REFUNDED = 'refunded',
+export interface FraudCheckResponse {
+  isHighRisk: boolean;
+  riskScore: number;
+  riskFactors: string[];
 }
 
 export interface BankAccount {
   id: string;
-  userId: string;
   accountNumber: string;
   routingNumber: string;
-  accountType: BankAccountType;
-  bankName: string;
-  accountHolderName: string;
+  accountType: string;
   balance: number;
   currency: string;
   isActive: boolean;
-  lastSyncAt?: Date;
-  externalId?: string;
-  metadata?: Record<string, any>;
-}
-
-export enum BankAccountType {
-  CHECKING = 'checking',
-  SAVINGS = 'savings',
-  INVESTMENT = 'investment',
-  CREDIT = 'credit',
-}
-
-export interface BankTransaction {
-  id: string;
-  accountId: string;
-  amount: number;
-  currency: string;
-  description: string;
-  transactionType: BankTransactionType;
-  category?: string;
-  merchantName?: string;
-  transactionDate: Date;
-  processedAt: Date;
-  externalId?: string;
-  metadata?: Record<string, any>;
+  userId: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export enum BankTransactionType {
-  CREDIT = 'credit',
-  DEBIT = 'debit',
+  DEPOSIT = 'deposit',
+  WITHDRAWAL = 'withdrawal',
   TRANSFER = 'transfer',
   FEE = 'fee',
   INTEREST = 'interest',
 }
 
-export interface ReconciliationRecord {
+export interface BankTransaction {
   id: string;
   accountId: string;
-  transactionId: string;
-  externalTransactionId: string;
+  type: BankTransactionType;
   amount: number;
   currency: string;
-  reconciledAt: Date;
-  discrepancy?: number;
-  status: ReconciliationStatus;
-  notes?: string;
-}
-
-export enum ReconciliationStatus {
-  MATCHED = 'matched',
-  UNMATCHED = 'unmatched',
-  DISCREPANCY = 'discrepancy',
-  PENDING = 'pending',
-}
-
-export interface FraudAlert {
-  id: string;
-  transactionId: string;
-  userId: string;
-  riskScore: number;
-  riskFactors: string[];
-  status: FraudStatus;
-  reviewedBy?: string;
-  reviewedAt?: Date;
-  notes?: string;
+  description: string;
+  reference?: string;
+  externalId?: string;
+  processedAt: Date;
   createdAt: Date;
 }
 
-export enum FraudStatus {
+export enum ReconciliationStatus {
   PENDING = 'pending',
-  APPROVED = 'approved',
-  REJECTED = 'rejected',
-  REQUIRES_REVIEW = 'requires_review',
+  MATCHED = 'matched',
+  UNMATCHED = 'unmatched',
+  DISPUTED = 'disputed',
+}
+
+export interface ReconciliationRecord {
+  id: string;
+  bankTransactionId: string;
+  paymentId?: string;
+  status: ReconciliationStatus;
+  amount: number;
+  currency: string;
+  reconciledAt?: Date;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }

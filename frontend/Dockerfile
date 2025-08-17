@@ -1,67 +1,51 @@
+# Multi-stage build optimized for t2.micro instance
 FROM node:18-alpine AS base
+RUN apk add --no-cache libc6-compat dumb-init curl
+WORKDIR /app
 
-# Install all dependencies for building
+# Install dependencies
 FROM base AS deps
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat
-WORKDIR /app
-COPY package.json ./
-RUN npm install
+COPY package*.json ./
+RUN npm install --only=production && npm cache clean --force
 
-# Install production dependencies only
-FROM base AS deps-prod
-RUN apk add --no-cache libc6-compat
-WORKDIR /app
-COPY package.json ./
-RUN npm install --omit=dev
-
-# Rebuild the source code only when needed
+# Build stage
 FROM base AS builder
-WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Next.js collects completely anonymous telemetry data about general usage.
-# Learn more here: https://nextjs.org/telemetry
-# Uncomment the following line in case you want to disable telemetry during the build.
-# ENV NEXT_TELEMETRY_DISABLED 1
-
+# Disable telemetry and build
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
 RUN npm run build
 
-# Production image, copy all the files and run next
-FROM base AS runner
+# Production stage - optimized for memory usage
+FROM base AS production
 WORKDIR /app
 
-ENV NODE_ENV production
-# Uncomment the following line in case you want to disable telemetry during runtime.
-# ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
+# Copy built application
 COPY --from=builder /app/public ./public
-
-# Set the correct permission for prerender cache
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
-
-# Automatically leverage output traces to reduce image size
-# https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Create health check endpoint
+RUN echo '{"status":"healthy","timestamp":"'$(date -Iseconds)'"}' > ./public/api/health.json
 
 USER nextjs
 
 EXPOSE 3000
 
-ENV PORT 3000
+# Optimized health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:3000/api/health.json || exit 1
 
-# Install curl for health checks
-USER root
-RUN apk add --no-cache curl
-USER nextjs
-
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/ || exit 1
-
+ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "server.js"]

@@ -1,32 +1,67 @@
+# Prometheus configuration optimized for t2.micro instance
 global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
+  scrape_interval: 60s  # Increased interval to reduce resource usage
+  evaluation_interval: 60s
+  external_labels:
+    monitor: 'smartfinance-monitor'
 
+# Alertmanager configuration (optional)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           - alertmanager:9093
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+# rule_files:
+#   - "first_rules.yml"
+#   - "second_rules.yml"
+
+# Scrape configuration
 scrape_configs:
+  # Prometheus itself
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
+    scrape_interval: 60s
+    metrics_path: /metrics
 
+  # SmartFinance Backend (.NET)
   - job_name: 'smartfinance-backend'
     static_configs:
       - targets: ['backend:5000']
-    metrics_path: '/metrics'
-    scrape_interval: 30s
+    scrape_interval: 60s
+    metrics_path: /metrics
+    scrape_timeout: 10s
 
-  - job_name: 'smartfinance-payment-service'
+  # SmartFinance Payment Service (Node.js)
+  - job_name: 'smartfinance-payment'
     static_configs:
       - targets: ['payment-service:3001']
-    metrics_path: '/metrics'
-    scrape_interval: 30s
+    scrape_interval: 60s
+    metrics_path: /metrics
+    scrape_timeout: 10s
 
-  - job_name: 'smartfinance-frontend'
-    static_configs:
-      - targets: ['frontend:3000']
-    metrics_path: '/metrics'
-    scrape_interval: 30s
+  # MongoDB Exporter (if available)
+  # - job_name: 'mongodb'
+  #   static_configs:
+  #     - targets: ['mongodb-exporter:9216']
+  #   scrape_interval: 60s
 
-  - job_name: 'nginx'
-    static_configs:
-      - targets: ['nginx:80']
-    metrics_path: '/metrics'
-    scrape_interval: 30s
+  # Redis Exporter (if available)
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis-exporter:9121']
+  #   scrape_interval: 60s
+
+  # Node Exporter for system metrics (if available)
+  # - job_name: 'node'
+  #   static_configs:
+  #     - targets: ['node-exporter:9100']
+  #   scrape_interval: 60s
+
+  # Nginx metrics (if nginx-prometheus-exporter is available)
+  # - job_name: 'nginx'
+  #   static_configs:
+  #     - targets: ['nginx-exporter:9113']
+  #   scrape_interval: 60s

@@ -1,55 +1,47 @@
+# Multi-stage build optimized for t2.micro instance
 FROM node:18-alpine AS base
+RUN apk add --no-cache libc6-compat dumb-init curl
+WORKDIR /app
 
-# Install all dependencies for building
+# Dependencies stage
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
-WORKDIR /app
-COPY package.json ./
-RUN npm install
+COPY package*.json ./
+RUN npm install --only=production && npm cache clean --force
 
-# Install production dependencies only
-FROM base AS deps-prod
-RUN apk add --no-cache libc6-compat
-WORKDIR /app
-COPY package.json ./
-RUN npm install --omit=dev
-
-# Rebuild the source code only when needed
+# Build stage
 FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+COPY package*.json ./
+RUN npm install && npm cache clean --force
 COPY . .
-
-# Build the application
 RUN npm run build
 
-# Production image, copy all the files and run node
-FROM base AS runner
+# Production stage - optimized for memory usage
+FROM base AS production
 WORKDIR /app
 
-ENV NODE_ENV production
+ENV NODE_ENV=production
+ENV PORT=3001
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nodejs
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nodejs
 
-# Copy the built application
+# Copy built application and production dependencies
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
-COPY --from=deps-prod --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=deps --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nodejs:nodejs /app/package.json ./package.json
 
-# Create logs directory
-RUN mkdir -p logs && chown nodejs:nodejs logs
+# Create application directories
+RUN mkdir -p logs data && \
+    chown -R nodejs:nodejs logs data
 
 USER nodejs
 
 EXPOSE 3001
 
-# Install curl for health checks
-USER root
-RUN apk add --no-cache curl
-USER nodejs
+# Optimized health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:3001/health || exit 1
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3001/health || exit 1
-
+ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "dist/index.js"]
