@@ -59,10 +59,10 @@ describe('Error Handler Middleware', () => {
   it('should handle validation errors with 400 status', () => {
     const error = new Error('Validation failed') as any;
     error.name = 'ValidationError';
-    error.details = [
-      { message: 'Field is required' },
-      { message: 'Invalid format' },
-    ];
+    error.errors = {
+      field1: { message: 'Field is required' },
+      field2: { message: 'Invalid format' },
+    };
 
     errorHandler(error, mockRequest as Request, mockResponse as Response, nextFunction);
 
@@ -80,7 +80,7 @@ describe('Error Handler Middleware', () => {
     const error = new Error('Duplicate key error') as any;
     error.name = 'MongoError';
     error.code = 11000;
-    error.keyPattern = { email: 1 };
+    error.keyValue = { email: 'test@example.com' };
 
     errorHandler(error, mockRequest as Request, mockResponse as Response, nextFunction);
 
