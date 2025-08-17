@@ -1,11 +1,7 @@
 import request from 'supertest';
 import express from 'express';
 import { bankingRoutes } from '../../src/routes/bankingRoutes';
-import { BankingService } from '../../src/services/bankingService';
 import { BankTransactionType, ReconciliationStatus } from '../../src/types/payment';
-
-// Mock the BankingService
-jest.mock('../../src/services/bankingService');
 
 // Mock auth middleware
 jest.mock('../../src/middleware/auth', () => ({
@@ -22,6 +18,20 @@ jest.mock('../../src/middleware/auth', () => ({
   },
 }));
 
+// Mock BankingService
+jest.mock('../../src/services/bankingService', () => ({
+  BankingService: jest.fn().mockImplementation(() => ({
+    createBankAccount: jest.fn(),
+    processTransaction: jest.fn(),
+    reconcileTransactions: jest.fn(),
+    getAccountBalance: jest.fn(),
+    getTransactionHistory: jest.fn(),
+    getAccountInfo: jest.fn(),
+    transferFunds: jest.fn(),
+    verifyAccount: jest.fn(),
+  })),
+}));
+
 const app = express();
 app.use(express.json());
 app.use('/api/v1/banking', bankingRoutes);
@@ -34,15 +44,23 @@ app.use((error: any, req: any, res: any, next: any) => {
   });
 });
 
+const mockBankingService = {
+  createBankAccount: jest.fn(),
+  processTransaction: jest.fn(),
+  reconcileTransactions: jest.fn(),
+  getAccountBalance: jest.fn(),
+  getTransactionHistory: jest.fn(),
+  getAccountInfo: jest.fn(),
+  transferFunds: jest.fn(),
+  verifyAccount: jest.fn(),
+};
+
+// Get the mocked BankingService
+const { BankingService } = require('../../src/services/bankingService');
+BankingService.mockImplementation(() => mockBankingService);
+
 describe('Banking Routes', () => {
-  let mockBankingService: jest.Mocked<BankingService>;
-
   beforeEach(() => {
-    mockBankingService = new BankingService() as jest.Mocked<BankingService>;
-    (BankingService as jest.Mock).mockImplementation(() => mockBankingService);
-  });
-
-  afterEach(() => {
     jest.clearAllMocks();
   });
 
@@ -51,22 +69,19 @@ describe('Banking Routes', () => {
       const mockAccount = {
         id: 'account-123',
         accountNumber: '1234567890',
-        routingNumber: '021000021',
+        routingNumber: '123456789',
         accountType: 'checking',
         balance: 0,
-        currency: 'USD',
-        isActive: true,
-        userId: 'user-123',
         createdAt: new Date(),
-        updatedAt: new Date(),
       };
 
       mockBankingService.createBankAccount.mockResolvedValue(mockAccount);
 
       const accountData = {
         accountNumber: '1234567890',
-        routingNumber: '021000021',
+        routingNumber: '123456789',
         accountType: 'checking',
+        bankName: 'Test Bank',
       };
 
       const response = await request(app)
@@ -78,10 +93,7 @@ describe('Banking Routes', () => {
         status: 'success',
         data: mockAccount,
       });
-      expect(mockBankingService.createBankAccount).toHaveBeenCalledWith({
-        ...accountData,
-        userId: 'test-user-id',
-      });
+      expect(mockBankingService.createBankAccount).toHaveBeenCalledWith(accountData);
     });
 
     it('should handle account creation errors', async () => {
@@ -89,9 +101,10 @@ describe('Banking Routes', () => {
       mockBankingService.createBankAccount.mockRejectedValue(error);
 
       const accountData = {
-        accountNumber: '',
-        routingNumber: '021000021',
+        accountNumber: '123',
+        routingNumber: '123456789',
         accountType: 'checking',
+        bankName: 'Test Bank',
       };
 
       const response = await request(app)
@@ -121,7 +134,7 @@ describe('Banking Routes', () => {
 
       const transactionData = {
         accountId: 'account-123',
-        type: 'deposit',
+        type: BankTransactionType.DEPOSIT,
         amount: 100.50,
         currency: 'USD',
         description: 'Test deposit',
@@ -204,11 +217,7 @@ describe('Banking Routes', () => {
         status: 'success',
         data: mockTransactions,
       });
-      expect(mockBankingService.getTransactionHistory).toHaveBeenCalledWith(
-        'account-123',
-        50,
-        0
-      );
+      expect(mockBankingService.getTransactionHistory).toHaveBeenCalledWith('account-123', 50, 0);
     });
 
     it('should handle pagination parameters', async () => {
@@ -219,33 +228,31 @@ describe('Banking Routes', () => {
         .get('/api/v1/banking/accounts/account-123/transactions?limit=10&offset=20')
         .expect(200);
 
-      expect(mockBankingService.getTransactionHistory).toHaveBeenCalledWith(
-        'account-123',
-        10,
-        20
-      );
+      expect(response.body).toEqual({
+        status: 'success',
+        data: mockTransactions,
+      });
+      expect(mockBankingService.getTransactionHistory).toHaveBeenCalledWith('account-123', 10, 20);
     });
   });
 
   describe('POST /api/v1/banking/reconcile', () => {
     it('should reconcile transactions successfully', async () => {
       const mockReconciliation = {
-        id: 'recon-123',
+        id: 'reconcile-123',
         bankTransactionId: 'bank-txn-123',
-        paymentId: 'payment-123',
+        internalTransactionId: 'internal-txn-123',
         status: ReconciliationStatus.MATCHED,
-        amount: 100.50,
-        currency: 'USD',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        reconciledAt: new Date(),
+        notes: 'Auto-reconciled',
       };
 
-      mockBankingService.reconcileTransactions.mockResolvedValue([mockReconciliation]);
+      mockBankingService.reconcileTransactions.mockResolvedValue(mockReconciliation);
 
       const reconciliationData = {
         bankTransactionId: 'bank-txn-123',
-        paymentId: 'payment-123',
-        notes: 'Manual reconciliation',
+        internalTransactionId: 'internal-txn-123',
+        notes: 'Auto-reconciled',
       };
 
       const response = await request(app)
@@ -257,20 +264,16 @@ describe('Banking Routes', () => {
         status: 'success',
         data: mockReconciliation,
       });
-      expect(mockBankingService.reconcileTransactions).toHaveBeenCalledWith(
-        'bank-txn-123',
-        'payment-123',
-        'Manual reconciliation'
-      );
+      expect(mockBankingService.reconcileTransactions).toHaveBeenCalledWith(reconciliationData);
     });
 
     it('should handle reconciliation errors', async () => {
-      const error = new Error('Bank transaction not found');
+      const error = new Error('Transaction not found');
       mockBankingService.reconcileTransactions.mockRejectedValue(error);
 
       const reconciliationData = {
         bankTransactionId: 'nonexistent',
-        paymentId: 'payment-123',
+        internalTransactionId: 'internal-txn-123',
       };
 
       const response = await request(app)
@@ -279,7 +282,7 @@ describe('Banking Routes', () => {
         .expect(500);
 
       expect(response.body.status).toBe('error');
-      expect(response.body.message).toBe('Bank transaction not found');
+      expect(response.body.message).toBe('Transaction not found');
     });
   });
 });

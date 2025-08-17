@@ -37,9 +37,9 @@ export const EditTransactionDialog = ({ transaction, onSuccess, children }: Edit
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
-    type: '',
-    categoryId: '',
-    accountId: '',
+    type: undefined as string | undefined,
+    categoryId: undefined as string | undefined,
+    accountId: undefined as string | undefined,
     transactionDate: '',
     isRecurring: false,
     notes: '',

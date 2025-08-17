@@ -18,9 +18,9 @@ interface FraudCheckResult {
 
 export class FraudDetectionService {
   private readonly riskThresholds = {
-    high: 50,
-    medium: 30,
-    low: 20,
+    high: 0.5,
+    medium: 0.3,
+    low: 0.2,
   };
 
   async checkTransaction(request: FraudCheckRequest): Promise<FraudCheckResult> {
@@ -38,8 +38,8 @@ export class FraudDetectionService {
 
       // Normalize riskScore to 0-1 range (divide by 100)
       const normalizedRiskScore = riskScore / 100;
-      const isHighRisk = normalizedRiskScore >= (this.riskThresholds.high / 100);
-      const recommendation = this.getRecommendation(riskScore);
+      const isHighRisk = normalizedRiskScore >= this.riskThresholds.high;
+      const recommendation = this.getRecommendation(normalizedRiskScore);
 
       logger.info('Fraud check completed', {
         userId: request.userId,
@@ -172,10 +172,10 @@ export class FraudDetectionService {
     return risk;
   }
 
-  private getRecommendation(riskScore: number): 'approve' | 'reject' | 'review' {
-    if (riskScore >= this.riskThresholds.high) {
+  private getRecommendation(normalizedRiskScore: number): 'approve' | 'reject' | 'review' {
+    if (normalizedRiskScore >= this.riskThresholds.high) {
       return 'reject';
-    } else if (riskScore >= this.riskThresholds.medium) {
+    } else if (normalizedRiskScore >= this.riskThresholds.medium) {
       return 'review';
     } else {
       return 'approve';
