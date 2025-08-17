@@ -70,7 +70,7 @@ export class PaymentService {
           riskFactors: fraudCheck.riskFactors,
         });
 
-        throw new Error('Payment failed fraud check');
+        throw new Error('Transaction flagged as high risk');
       }
 
       const processingResult = await this.processPaymentWithProvider(payment);
