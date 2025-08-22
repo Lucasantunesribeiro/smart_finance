@@ -11,8 +11,6 @@ SmartFinance é um **sistema completo de gestão financeira empresarial** desenv
 
 ## 🌐 **Demo Online**
 - **🚀 Aplicação**: http://34.203.238.219
-- **📊 API Docs**: http://34.203.238.219:5000/swagger
-- **💳 Payment Service**: http://34.203.238.219:3001
 
 ## 🏗️ **Arquitetura Enterprise**
 
