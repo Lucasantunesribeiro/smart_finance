@@ -10,9 +10,9 @@
 SmartFinance é um **sistema completo de gestão financeira empresarial** desenvolvido com arquitetura moderna e tecnologias de ponta, oferecendo uma solução robusta para controle financeiro, análise de dados e processamento de pagamentos em tempo real.
 
 ## 🌐 **Demo Online**
-- **🚀 Aplicação**: http://204.236.248.148
-- **📊 API Docs**: http://204.236.248.148:5000/swagger
-- **💳 Payment Service**: http://204.236.248.148:3001
+- **🚀 Aplicação**: http://34.203.238.219
+- **📊 API Docs**: http://34.203.238.219:5000/swagger
+- **💳 Payment Service**: http://34.203.238.219:3001
 
 ## 🏗️ **Arquitetura Enterprise**
 
