@@ -124,7 +124,6 @@ docker-compose up -d --build
 # 3. Acesse a aplicação
 echo "🌐 Frontend: http://localhost:3000"
 echo "🔧 Backend API: http://localhost:5000"
-echo "💳 Payment Service: http://localhost:3001"
 echo "📊 API Docs: http://localhost:5000/swagger"
 ```
 
@@ -234,7 +233,6 @@ POST   /api/v1/auth/login          # Autenticação
 GET    /api/v1/transactions        # Listar transações
 POST   /api/v1/transactions        # Criar transação
 GET    /api/v1/analytics/dashboard # Dashboard data
-POST   /api/v1/payments/process    # Processar pagamento
 ```
 
 ## 🚀 **Deploy em Produção**
@@ -296,20 +294,6 @@ terraform output
 - 💾 **Memory Usage**: <80%
 - 🔄 **Error Rate**: <0.1%
 
-## 🤝 **Contribuição**
-
-### **🔄 Processo de Contribuição**
-1. 🍴 Fork o projeto
-2. 🌿 Crie uma branch (`git checkout -b feature/AmazingFeature`)
-3. ✅ Commit suas mudanças (`git commit -m 'Add AmazingFeature'`)
-4. 📤 Push para a branch (`git push origin feature/AmazingFeature`)
-5. 🔄 Abra um Pull Request
-
-### **📋 Guidelines**
-- ✅ Seguir padrões de código estabelecidos
-- ✅ Incluir testes para novas funcionalidades
-- ✅ Atualizar documentação quando necessário
-- ✅ Manter cobertura de testes >80%
 
 ## 📊 **Status do Projeto**
 
@@ -327,25 +311,12 @@ terraform output
 - ✅ Integração com sistemas legados
 - ✅ Auditoria e compliance
 
-## 📄 **Licença**
-
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
-
 ## 👨‍💻 **Autor**
 
 **Lucas Antunes Ribeiro**
 - 🌐 **GitHub**: [@lucasantunesribeiro](https://github.com/lucasantunesribeiro)
 - 💼 **LinkedIn**: [Lucas Antunes Ribeiro](https://linkedin.com/in/lucasantunesribeiro)
 - 📧 **Email**: lucas@smartfinance.com
-
-## 🙏 **Agradecimentos**
-
-- 🏢 **Microsoft** - .NET Platform
-- ⚛️ **Vercel** - Next.js Framework  
-- 🟢 **Node.js Foundation**
-- 🐳 **Docker Inc.**
-- ☁️ **Amazon Web Services**
-- 🌟 **Comunidade Open Source**
 
 ---
 
