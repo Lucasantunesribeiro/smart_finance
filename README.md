@@ -44,12 +44,6 @@ Infra        │ Docker + Nginx + AWS + Terraform
 - 🔄 Reconciliação automática
 - 📋 Histórico completo com filtros avançados
 
-### **💳 Processamento de Pagamentos**
-- 🏦 Múltiplos métodos de pagamento
-- ⚡ Processamento assíncrono com filas
-- 🔄 Sistema de retry automático
-- 🛡️ Detecção de fraude em tempo real
-
 ### **📊 Relatórios e Analytics**
 - 📈 DRE (Demonstração do Resultado do Exercício)
 - 💰 Fluxo de caixa detalhado
