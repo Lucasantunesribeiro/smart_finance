@@ -4,18 +4,19 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { transactionService } from '@/services/transactionService';
 import { formatCurrency } from '@/lib/utils';
-import { 
-  FileText, 
-  Download, 
-  Calendar, 
+import {
+  FileText,
+  Download,
+  Calendar,
   Filter,
   PieChart,
   BarChart3,
   TrendingUp,
   Receipt,
-  DollarSign
+  DollarSign,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from '@/i18n/locale-context';
 
 export const ReportsPage = () => {
   const [selectedReport, setSelectedReport] = useState('monthly');
