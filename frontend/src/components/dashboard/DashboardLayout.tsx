@@ -165,7 +165,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       </aside>
 
       {/* Main Content */}
-      <main className="lg:ml-64 pt-4 pb-8">
+      <main className="lg:ml-64 pt-10 pb-8">
         <div className="px-4 lg:px-8">
           {children}
         </div>

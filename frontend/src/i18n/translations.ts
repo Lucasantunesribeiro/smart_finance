@@ -22,7 +22,28 @@ export type TranslationKey =
   | 'welcomeBulletFour'
   | 'welcomeFooter'
   | 'languageLabel'
-  | 'currentLanguage';
+  | 'currentLanguage'
+  | 'dashboardTitle'
+  | 'dashboardSubtitle'
+  | 'addTransaction'
+  | 'netAmount'
+  | 'totalIncome'
+  | 'totalExpenses'
+  | 'transactions'
+  | 'recentTransactionsTitle'
+  | 'recentTransactionsDescription'
+  | 'recentTransactionsEmpty'
+  | 'budgetOverviewTitle'
+  | 'budgetOverviewDescription'
+  | 'noActiveBudgets'
+  | 'transactionTypeIncome'
+  | 'transactionTypeExpense'
+  | 'transactionTypeTransfer'
+  | 'transactionTypeUnknown'
+  | 'statusCompleted'
+  | 'statusPending'
+  | 'statusFailed'
+  | 'statusUnknown';
 
 type TranslationDictionary = Record<TranslationKey, string>;
 
@@ -50,6 +71,27 @@ const translations: Record<Locale, TranslationDictionary> = {
     welcomeFooter: 'Redirecionando para o dashboard autêntico...',
     languageLabel: 'Idioma',
     currentLanguage: 'pt-BR',
+    dashboardTitle: 'Dashboard',
+    dashboardSubtitle: 'Bem-vindo de volta, {name}! Aqui está sua visão financeira.',
+    addTransaction: 'Adicionar transação',
+    netAmount: 'Valor líquido',
+    totalIncome: 'Total de receitas',
+    totalExpenses: 'Total de despesas',
+    transactions: 'Transações',
+    recentTransactionsTitle: 'Transações recentes',
+    recentTransactionsDescription: 'Últimas movimentações financeiras',
+    recentTransactionsEmpty: 'Nenhuma transação recente encontrada',
+    budgetOverviewTitle: 'Visão do orçamento',
+    budgetOverviewDescription: 'Progresso do mês atual',
+    noActiveBudgets: 'Nenhum orçamento ativo encontrado',
+    transactionTypeIncome: 'Receita',
+    transactionTypeExpense: 'Despesa',
+    transactionTypeTransfer: 'Transferência',
+    transactionTypeUnknown: 'Desconhecido',
+    statusCompleted: 'Concluído',
+    statusPending: 'Pendente',
+    statusFailed: 'Falhou',
+    statusUnknown: 'Desconhecido',
   },
   en: {
     sheetDescription: 'Modern Financial Management',
@@ -74,6 +116,27 @@ const translations: Record<Locale, TranslationDictionary> = {
     welcomeFooter: 'Redirecting to the authentic dashboard...',
     languageLabel: 'Language',
     currentLanguage: 'en-US',
+    dashboardTitle: 'Dashboard',
+    dashboardSubtitle: 'Welcome back, {name}! Here is your financial overview.',
+    addTransaction: 'Add Transaction',
+    netAmount: 'Net Amount',
+    totalIncome: 'Total Income',
+    totalExpenses: 'Total Expenses',
+    transactions: 'Transactions',
+    recentTransactionsTitle: 'Recent Transactions',
+    recentTransactionsDescription: 'Latest financial activity',
+    recentTransactionsEmpty: 'No recent transactions found',
+    budgetOverviewTitle: 'Budget Overview',
+    budgetOverviewDescription: 'Current month progress',
+    noActiveBudgets: 'No active budgets found',
+    transactionTypeIncome: 'Income',
+    transactionTypeExpense: 'Expense',
+    transactionTypeTransfer: 'Transfer',
+    transactionTypeUnknown: 'Unknown',
+    statusCompleted: 'Completed',
+    statusPending: 'Pending',
+    statusFailed: 'Failed',
+    statusUnknown: 'Unknown',
   },
 };
 
