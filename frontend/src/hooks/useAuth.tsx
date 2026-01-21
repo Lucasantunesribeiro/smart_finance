@@ -3,7 +3,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { authService } from '@/services/authService';
-import { setAuthToken } from '@/lib/api';
 import { User, LoginRequest, RegisterRequest } from '@/types/auth';
 import { toast } from 'sonner';
 
@@ -27,39 +26,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const initializeAuth = async () => {
       try {
         const storedUser = localStorage.getItem('user');
-        const storedToken = localStorage.getItem('accessToken');
-        const storedRefreshToken = localStorage.getItem('refreshToken');
-
-        if (storedUser && storedToken && storedRefreshToken) {
-          const isExpired = authService.isTokenExpired(storedToken);
-          
-          if (isExpired) {
-            try {
-              const authResponse = await authService.refreshToken(storedRefreshToken);
-              localStorage.setItem('accessToken', authResponse.accessToken);
-              localStorage.setItem('refreshToken', authResponse.refreshToken);
-              localStorage.setItem('user', JSON.stringify(authResponse.user));
-              setAuthToken(authResponse.accessToken);
-              setUser(authResponse.user);
-            } catch (error) {
-              console.error('Token refresh failed:', error);
-              localStorage.removeItem('accessToken');
-              localStorage.removeItem('refreshToken');
-              localStorage.removeItem('user');
-              setUser(null);
-            }
-          } else {
-            setAuthToken(storedToken);
-            setUser(JSON.parse(storedUser));
+        const accessToken = localStorage.getItem('accessToken');
+        if (!accessToken) {
+          if (storedUser) {
+            localStorage.removeItem('user');
           }
-        } else {
           setUser(null);
+          setIsLoading(false);
+          return;
         }
+
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
+
+        const session = await authService.getSession();
+        localStorage.setItem('user', JSON.stringify(session.user));
+        setUser(session.user);
       } catch (error) {
         console.error('Error initializing auth:', error);
+        localStorage.removeItem('user');
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -72,10 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginMutation = useMutation({
     mutationFn: authService.login,
     onSuccess: (data) => {
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken);
       localStorage.setItem('user', JSON.stringify(data.user));
-      setAuthToken(data.accessToken);
       setUser(data.user);
       toast.success('Login successful');
     },
@@ -88,10 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const registerMutation = useMutation({
     mutationFn: authService.register,
     onSuccess: (data) => {
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken);
       localStorage.setItem('user', JSON.stringify(data.user));
-      setAuthToken(data.accessToken);
       setUser(data.user);
       toast.success('Registration successful');
     },
@@ -104,19 +86,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logoutMutation = useMutation({
     mutationFn: authService.logout,
     onSuccess: () => {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
-      setAuthToken(null);
       setUser(null);
       queryClient.clear();
       toast.success('Logged out successfully');
     },
     onError: (error) => {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
-      setAuthToken(null);
       setUser(null);
       queryClient.clear();
       console.error('Logout error:', error);

@@ -15,6 +15,7 @@ using SmartFinance.WebApi.Hubs;
 using SmartFinance.WebApi.Middleware;
 using System.Threading.RateLimiting;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,10 +40,21 @@ builder.Services.AddDbContext<SmartFinanceDbContext>(options =>
     logger.LogInformation("Environment: {Environment}", builder.Environment.EnvironmentName);
     logger.LogInformation("IsDevelopment: {IsDevelopment}", builder.Environment.IsDevelopment());
     
-    // Use SQLite for development
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    logger.LogInformation("Using SQLite with connection string: {ConnectionString}", connectionString);
-    options.UseSqlite(connectionString);
+    var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+    if (!string.IsNullOrWhiteSpace(databaseUrl))
+    {
+        var useSsl = string.Equals(Environment.GetEnvironmentVariable("DB_SSL"), "true", StringComparison.OrdinalIgnoreCase);
+        var connectionString = BuildPostgresConnectionString(databaseUrl, useSsl);
+        logger.LogInformation("Using PostgreSQL (DATABASE_URL set).");
+        options.UseNpgsql(connectionString);
+    }
+    else
+    {
+        // Use SQLite for local development
+        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+        logger.LogInformation("Using SQLite with connection string: {ConnectionString}", connectionString);
+        options.UseSqlite(connectionString);
+    }
 });
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -52,6 +64,12 @@ builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(SmartFinance.Application.AssemblyReference.Assembly));
 
 builder.Services.AddAutoMapper(typeof(Program).Assembly);
+
+var jwtSecret = builder.Configuration["Jwt:SecretKey"] ?? Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
+if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret.Trim().Length < 32)
+{
+    throw new InvalidOperationException("JWT Secret Key is not configured or is too short.");
+}
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -64,7 +82,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"]!)),
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
             ClockSkew = TimeSpan.Zero
         };
 
@@ -158,12 +176,16 @@ builder.Services.AddSignalR();
 
 builder.Services.AddCors(options =>
 {
+    var allowedOrigins = (Environment.GetEnvironmentVariable("ALLOWED_ORIGINS")
+        ?? "http://smartfinance-prod-alb-1713518371.sa-east-1.elb.amazonaws.com/")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
     options.AddPolicy("AllowedOrigins", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "https://localhost:3000", "http://localhost:3003", "https://localhost:3003")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        policy.WithOrigins(allowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -203,10 +225,18 @@ using (var scope = app.Services.CreateScope())
         var context = scope.ServiceProvider.GetRequiredService<SmartFinanceDbContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         
-        logger.LogInformation("Attempting to ensure database is created...");
-        
-        context.Database.EnsureCreated();
-        
+        var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+        if (!string.IsNullOrWhiteSpace(databaseUrl))
+        {
+            logger.LogInformation("Applying database migrations...");
+            context.Database.Migrate();
+        }
+        else
+        {
+            logger.LogInformation("Attempting to ensure database is created...");
+            context.Database.EnsureCreated();
+        }
+
         logger.LogInformation("Database initialization completed successfully");
     }
     catch (Exception ex)
@@ -218,3 +248,24 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+static string BuildPostgresConnectionString(string databaseUrl, bool useSsl)
+{
+    var uri = new Uri(databaseUrl);
+    var userInfoParts = uri.UserInfo.Split(':', 2, StringSplitOptions.RemoveEmptyEntries);
+    var username = userInfoParts.Length > 0 ? Uri.UnescapeDataString(userInfoParts[0]) : string.Empty;
+    var password = userInfoParts.Length > 1 ? Uri.UnescapeDataString(userInfoParts[1]) : string.Empty;
+
+    var builder = new NpgsqlConnectionStringBuilder
+    {
+        Host = uri.Host,
+        Port = uri.Port > 0 ? uri.Port : 5432,
+        Database = uri.AbsolutePath.TrimStart('/'),
+        Username = username,
+        Password = password,
+        SslMode = useSsl ? SslMode.Require : SslMode.Disable,
+        TrustServerCertificate = useSsl
+    };
+
+    return builder.ConnectionString;
+}

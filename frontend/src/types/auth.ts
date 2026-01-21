@@ -28,12 +28,8 @@ export interface RegisterRequest {
 }
 
 export interface AuthResponse {
-  accessToken: string;
-  refreshToken: string;
-  expiresAt: string;
+  accessToken?: string;
+  refreshToken?: string;
+  expiresAt?: string;
   user: User;
-}
-
-export interface RefreshTokenRequest {
-  refreshToken: string;
 }

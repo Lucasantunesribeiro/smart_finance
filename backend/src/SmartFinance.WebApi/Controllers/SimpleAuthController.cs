@@ -129,6 +129,48 @@ public class SimpleAuthController : ControllerBase
         }
     }
 
+    [HttpGet("me")]
+    [Authorize]
+    public IActionResult Me()
+    {
+        if (User?.Identity?.IsAuthenticated != true)
+        {
+            return Unauthorized(new { message = "Authentication required" });
+        }
+
+        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? User.FindFirst("email")?.Value;
+        var userIdValue = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(userIdValue))
+        {
+            return Unauthorized(new { message = "Invalid token" });
+        }
+
+        if (!Guid.TryParse(userIdValue, out var userId))
+        {
+            return Unauthorized(new { message = "Invalid user id" });
+        }
+
+        var response = new AuthResponseDto
+        {
+            AccessToken = string.Empty,
+            RefreshToken = string.Empty,
+            ExpiresAt = DateTime.UtcNow.AddHours(24),
+            User = new UserDto
+            {
+                Id = userId,
+                Email = email,
+                FirstName = GetFirstNameFromEmail(email),
+                LastName = "User",
+                Role = UserRole.User,
+                IsActive = true,
+                LastLoginAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow
+            }
+        };
+
+        return Ok(response);
+    }
+
     [HttpPost("logout")]
     [Authorize]
     public IActionResult Logout()
@@ -146,9 +188,17 @@ public class SimpleAuthController : ControllerBase
 
     private string GenerateJwtToken(string email, Guid userId)
     {
-        var secretKey = _configuration["Jwt:SecretKey"];
-        var issuer = _configuration["Jwt:Issuer"];
-        var audience = _configuration["Jwt:Audience"];
+        var secretKey = _configuration["Jwt:SecretKey"]
+            ?? Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
+        if (string.IsNullOrWhiteSpace(secretKey) || secretKey.Trim().Length < 32)
+        {
+            throw new InvalidOperationException("JWT Secret Key is not configured or is too short.");
+        }
+
+        var issuer = _configuration["Jwt:Issuer"]
+            ?? Environment.GetEnvironmentVariable("JWT_ISSUER");
+        var audience = _configuration["Jwt:Audience"]
+            ?? Environment.GetEnvironmentVariable("JWT_AUDIENCE");
         
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

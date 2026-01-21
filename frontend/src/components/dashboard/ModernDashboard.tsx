@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { transactionService } from '@/services/transactionService';
 import { budgetService } from '@/services/budgetService';
@@ -63,6 +63,7 @@ const StatsCard = ({ title, value, change, changeType, icon }: StatsCardProps) =
 
 export const ModernDashboard = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   // Fetch data with proper error handling and defaults
   const { data: transactionSummary = { 
@@ -140,8 +141,9 @@ export const ModernDashboard = () => {
   };
 
   const refreshData = () => {
-    // This will be used to refresh data after adding transactions
-    window.location.reload();
+    queryClient.invalidateQueries({ queryKey: ['transaction-summary'] });
+    queryClient.invalidateQueries({ queryKey: ['recent-transactions'] });
+    queryClient.invalidateQueries({ queryKey: ['budgets'] });
   };
 
   return (

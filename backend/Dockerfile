@@ -16,7 +16,7 @@ COPY ["src/SmartFinance.Domain/SmartFinance.Domain.csproj", "src/SmartFinance.Do
 COPY ["src/SmartFinance.Infrastructure/SmartFinance.Infrastructure.csproj", "src/SmartFinance.Infrastructure/"]
 
 RUN dotnet restore "src/SmartFinance.WebApi/SmartFinance.WebApi.csproj" \
-    --runtime alpine-x64
+    --runtime linux-musl-x64
 
 # Copy source code and build
 COPY . .
@@ -26,7 +26,7 @@ WORKDIR "/src/src/SmartFinance.WebApi"
 RUN dotnet build "SmartFinance.WebApi.csproj" \
     -c Release \
     -o /app/build \
-    --runtime alpine-x64 \
+    --runtime linux-musl-x64 \
     --self-contained false \
     --no-restore
 
@@ -35,7 +35,7 @@ FROM build AS publish
 RUN dotnet publish "SmartFinance.WebApi.csproj" \
     -c Release \
     -o /app/publish \
-    --runtime alpine-x64 \
+    --runtime linux-musl-x64 \
     --self-contained false \
     --no-restore \
     /p:PublishTrimmed=false

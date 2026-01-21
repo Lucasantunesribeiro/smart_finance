@@ -1,18 +1,35 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { budgetService } from '@/services/budgetService';
 import { categoryService } from '@/services/categoryService';
 import { formatCurrency } from '@/lib/utils';
 import { Plus, Edit, Trash2, AlertCircle, Target, Calendar, DollarSign } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
-import { BudgetPeriod } from '@/types/budget';
+import { BudgetPeriod, Budget, CreateBudgetRequest, UpdateBudgetRequest } from '@/types/budget';
 import { toast } from 'sonner';
+import { useTranslation } from '@/i18n/locale-context';
+import { extractErrorMessage } from '@/lib/errorHelpers';
 
 export const BudgetPage = () => {
   const [selectedPeriod, setSelectedPeriod] = useState<BudgetPeriod>(BudgetPeriod.Monthly);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
+  const { localize } = useTranslation();
+  
+  // Form state
+  const [formData, setFormData] = useState<CreateBudgetRequest>({
+    name: '',
+    allocated: 0,
+    categoryId: '',
+    period: BudgetPeriod.Monthly,
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0]
+  });
+
+  const queryClient = useQueryClient();
 
   // Conectando com backend real
   const { data: budgets = [], isLoading } = useQuery({
@@ -41,6 +58,111 @@ export const BudgetPage = () => {
 
   const categories = categoriesData?.items || [];
 
+  // Mutations
+  const createBudgetMutation = useMutation({
+    mutationFn: (data: CreateBudgetRequest) => budgetService.createBudget(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budgets'] });
+      toast.success(localize('Orçamento criado com sucesso!', 'Budget created successfully!'));
+      setShowCreateModal(false);
+      resetForm();
+    },
+    onError: (error: unknown) => {
+      toast.error(extractErrorMessage(error, localize('Erro ao criar orçamento.', 'Failed to create budget.')));
+    }
+  });
+
+  const updateBudgetMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateBudgetRequest }) => 
+      budgetService.updateBudget(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budgets'] });
+      toast.success(localize('Orçamento atualizado com sucesso!', 'Budget updated successfully!'));
+      setShowEditModal(false);
+      setEditingBudget(null);
+      resetForm();
+    },
+    onError: (error: unknown) => {
+      toast.error(extractErrorMessage(error, localize('Erro ao atualizar orçamento.', 'Failed to update budget.')));
+    }
+  });
+
+  const deleteBudgetMutation = useMutation({
+    mutationFn: (id: string) => budgetService.deleteBudget(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budgets'] });
+      toast.success(localize('Orçamento deletado com sucesso!', 'Budget deleted successfully!'));
+    },
+    onError: (error: unknown) => {
+      toast.error(extractErrorMessage(error, localize('Erro ao deletar orçamento.', 'Failed to delete budget.')));
+    }
+  });
+
+  // Helper functions
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      allocated: 0,
+      categoryId: '',
+      period: BudgetPeriod.Monthly,
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0]
+    });
+  };
+
+  const formatDateForInput = (dateString: string) => {
+    const date = new Date(dateString + 'T00:00:00');
+    return date.toISOString().split('T')[0];
+  };
+
+  const handleEdit = (budget: Budget) => {
+    setEditingBudget(budget);
+    setFormData({
+      name: budget.name,
+      allocated: budget.allocated || 0,
+      categoryId: budget.categoryId,
+      period: budget.period,
+      startDate: formatDateForInput(budget.startDate) || new Date().toISOString().split('T')[0],
+      endDate: formatDateForInput(budget.endDate) || new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0],
+      description: budget.description
+    });
+    setShowEditModal(true);
+  };
+
+  const handleDelete = (budget: Budget) => {
+    if (
+      window.confirm(
+        localize(
+          `Tem certeza que deseja deletar o orçamento "${budget.name}"?`,
+          `Are you sure you want to delete the budget "${budget.name}"?`
+        )
+      )
+    ) {
+      deleteBudgetMutation.mutate(budget.id);
+    }
+  };
+
+  const handleSubmit = () => {
+    if (!formData.name.trim()) {
+      toast.error('Nome do orçamento é obrigatório');
+      return;
+    }
+    if (!formData.categoryId) {
+      toast.error('Categoria é obrigatória');
+      return;
+    }
+    if (formData.allocated <= 0) {
+      toast.error('Valor do orçamento deve ser maior que zero');
+      return;
+    }
+
+    if (editingBudget) {
+      updateBudgetMutation.mutate({ id: editingBudget.id, data: formData });
+    } else {
+      createBudgetMutation.mutate(formData);
+    }
+  };
+
   const getBudgetStatusColor = (percentage: number) => {
     if (percentage >= 90) return 'bg-red-500';
     if (percentage >= 75) return 'bg-yellow-500';
@@ -48,20 +170,20 @@ export const BudgetPage = () => {
   };
 
   const getBudgetStatusText = (percentage: number) => {
-    if (percentage >= 100) return 'Excedido';
-    if (percentage >= 90) return 'Crítico';
-    if (percentage >= 75) return 'Atenção';
-    return 'No orçamento';
+    if (percentage >= 100) return localize('Excedido', 'Over budget');
+    if (percentage >= 90) return localize('Crítico', 'Critical');
+    if (percentage >= 75) return localize('Atenção', 'Warning');
+    return localize('No orçamento', 'Within budget');
   };
 
   const getPeriodText = (period: BudgetPeriod) => {
-    switch (period) {
-      case BudgetPeriod.Weekly: return 'Semanal';
-      case BudgetPeriod.Monthly: return 'Mensal';
-      case BudgetPeriod.Quarterly: return 'Trimestral';
-      case BudgetPeriod.Yearly: return 'Anual';
-      default: return 'Mensal';
-    }
+    const options = {
+      [BudgetPeriod.Weekly]: localize('Semanal', 'Weekly'),
+      [BudgetPeriod.Monthly]: localize('Mensal', 'Monthly'),
+      [BudgetPeriod.Quarterly]: localize('Trimestral', 'Quarterly'),
+      [BudgetPeriod.Yearly]: localize('Anual', 'Yearly'),
+    };
+    return options[period] || options[BudgetPeriod.Monthly];
   };
 
   const totalAllocated = budgets.reduce((sum, budget) => sum + (budget.allocated || 0), 0);
@@ -73,15 +195,19 @@ export const BudgetPage = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Gerenciamento de Orçamentos</h1>
-          <p className="text-gray-600">Controle seus gastos e mantenha-se dentro do orçamento</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {localize('Gerenciamento de Orçamentos', 'Budget Management')}
+          </h1>
+          <p className="text-gray-600">
+            {localize('Controle seus gastos e mantenha-se dentro do orçamento', 'Track spending and stay within budget')}
+          </p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
         >
           <Plus className="w-4 h-4" />
-          <span>Novo Orçamento</span>
+          <span>{localize('Novo Orçamento', 'New Budget')}</span>
         </button>
       </div>
 
@@ -107,7 +233,9 @@ export const BudgetPage = () => {
         <div className="bg-white p-6 rounded-lg shadow-sm border">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Orçado</p>
+              <p className="text-sm text-gray-600">
+                {localize('Total Orçado', 'Total Budgeted')}
+              </p>
               <p className="text-2xl font-bold text-gray-900">
                 {formatCurrency(totalAllocated)}
               </p>
@@ -119,7 +247,9 @@ export const BudgetPage = () => {
         <div className="bg-white p-6 rounded-lg shadow-sm border">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Gasto</p>
+              <p className="text-sm text-gray-600">
+                {localize('Total Gasto', 'Total Spent')}
+              </p>
               <p className="text-2xl font-bold text-red-600">
                 {formatCurrency(totalSpent)}
               </p>
@@ -131,7 +261,9 @@ export const BudgetPage = () => {
         <div className="bg-white p-6 rounded-lg shadow-sm border">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Saldo Restante</p>
+              <p className="text-sm text-gray-600">
+                {localize('Saldo Restante', 'Remaining Balance')}
+              </p>
               <p className="text-2xl font-bold text-green-600">
                 {formatCurrency(totalAllocated - totalSpent)}
               </p>
@@ -143,7 +275,9 @@ export const BudgetPage = () => {
         <div className="bg-white p-6 rounded-lg shadow-sm border">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Orçamentos Críticos</p>
+              <p className="text-sm text-gray-600">
+                {localize('Orçamentos Críticos', 'Critical Budgets')}
+              </p>
               <p className="text-2xl font-bold text-orange-600">
                 {overBudgetCount}
               </p>
@@ -156,21 +290,28 @@ export const BudgetPage = () => {
       {/* Budget List */}
       <div className="bg-white rounded-lg shadow-sm border">
         <div className="p-6 border-b">
-          <h2 className="text-lg font-semibold text-gray-900">Orçamentos {getPeriodText(selectedPeriod)}</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            {localize('Orçamentos', 'Budgets')} {getPeriodText(selectedPeriod)}
+          </h2>
         </div>
         
         <div className="p-6">
           {isLoading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-2 text-gray-600">Carregando orçamentos...</p>
+              <p className="mt-2 text-gray-600">
+                {localize('Carregando orçamentos...', 'Loading budgets...')}
+              </p>
             </div>
           ) : budgets.length === 0 ? (
             <EmptyState
               icon={<Target className="h-12 w-12" />}
-              title="Nenhum orçamento encontrado"
-              description="Comece criando seu primeiro orçamento para controlar seus gastos mensais"
-              actionLabel="Criar Primeiro Orçamento"
+              title={localize('Nenhum orçamento encontrado', 'No budgets found')}
+              description={localize(
+                'Comece criando seu primeiro orçamento para controlar seus gastos mensais',
+                'Start by creating your first budget to track monthly spending'
+              )}
+              actionLabel={localize('Criar Primeiro Orçamento', 'Create First Budget')}
               onAction={() => setShowCreateModal(true)}
             />
           ) : (
@@ -182,7 +323,7 @@ export const BudgetPage = () => {
                       <h3 className="font-semibold text-gray-900">{budget.name}</h3>
                       <p className="text-sm text-gray-600">{budget.description}</p>
                       <p className="text-sm text-gray-500 mt-1">
-                        {budget.categoryName} • {new Date(budget.startDate).toLocaleDateString()} - {new Date(budget.endDate).toLocaleDateString()}
+                        {budget.categoryName} • {new Date(budget.startDate + 'T00:00:00').toLocaleDateString()} - {new Date(budget.endDate + 'T00:00:00').toLocaleDateString()}
                       </p>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -194,10 +335,18 @@ export const BudgetPage = () => {
                       }`}>
                         {getBudgetStatusText(budget.percentage || 0)}
                       </span>
-                      <button className="text-gray-400 hover:text-gray-600">
+                      <button 
+                        onClick={() => handleEdit(budget)}
+                        className="text-gray-400 hover:text-gray-600"
+                        title="Editar orçamento"
+                      >
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button className="text-gray-400 hover:text-red-600">
+                      <button 
+                        onClick={() => handleDelete(budget)}
+                        className="text-gray-400 hover:text-red-600"
+                        title="Deletar orçamento"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -247,8 +396,10 @@ export const BudgetPage = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
-                                <input 
+                <input 
                   type="text" 
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Ex: Orçamento Mensal"
                 />
@@ -257,13 +408,19 @@ export const BudgetPage = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Valor Orçado</label>
                 <input
                   type="number"
+                  value={formData.allocated}
+                  onChange={(e) => setFormData({ ...formData, allocated: parseFloat(e.target.value) || 0 })}
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="0,00"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                <select className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select 
+                  value={formData.categoryId}
+                  onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
                   <option value="">Selecione uma categoria</option>
                   {categories.length > 0 ? (
                     categories.map((category) => (
@@ -278,29 +435,136 @@ export const BudgetPage = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Período</label>
-                <select className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select 
+                  value={formData.period}
+                  onChange={(e) => setFormData({ ...formData, period: parseInt(e.target.value) as BudgetPeriod })}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
                   <option value={BudgetPeriod.Weekly}>Semanal</option>
                   <option value={BudgetPeriod.Monthly}>Mensal</option>
                   <option value={BudgetPeriod.Quarterly}>Trimestral</option>
                   <option value={BudgetPeriod.Yearly}>Anual</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Descrição (opcional)</label>
+                <textarea
+                  value={formData.description || ''}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={2}
+                  placeholder="Descrição do orçamento"
+                />
+              </div>
             </div>
             <div className="flex justify-end space-x-3 mt-6">
               <button
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => {
+                  setShowCreateModal(false);
+                  resetForm();
+                }}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800"
               >
                 Cancelar
               </button>
               <button
-                onClick={() => {
-                  toast.success('Orçamento criado com sucesso!');
-                  setShowCreateModal(false);
-                }}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                onClick={handleSubmit}
+                disabled={createBudgetMutation.isPending}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
-                Criar Orçamento
+                {createBudgetMutation.isPending ? 'Criando...' : 'Criar Orçamento'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Budget Modal */}
+      {showEditModal && editingBudget && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Editar Orçamento</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                <input 
+                  type="text" 
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Ex: Orçamento Mensal"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Valor Orçado</label>
+                <input
+                  type="number"
+                  value={formData.allocated}
+                  onChange={(e) => setFormData({ ...formData, allocated: parseFloat(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0,00"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                <select 
+                  value={formData.categoryId}
+                  onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Selecione uma categoria</option>
+                  {categories.length > 0 ? (
+                    categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled>Nenhuma categoria disponível</option>
+                  )}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Período</label>
+                <select 
+                  value={formData.period}
+                  onChange={(e) => setFormData({ ...formData, period: parseInt(e.target.value) as BudgetPeriod })}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value={BudgetPeriod.Weekly}>Semanal</option>
+                  <option value={BudgetPeriod.Monthly}>Mensal</option>
+                  <option value={BudgetPeriod.Quarterly}>Trimestral</option>
+                  <option value={BudgetPeriod.Yearly}>Anual</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Descrição (opcional)</label>
+                <textarea
+                  value={formData.description || ''}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={2}
+                  placeholder="Descrição do orçamento"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingBudget(null);
+                  resetForm();
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={updateBudgetMutation.isPending}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {updateBudgetMutation.isPending ? 'Salvando...' : 'Salvar Alterações'}
               </button>
             </div>
           </div>

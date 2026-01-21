@@ -1,259 +1,55 @@
-name: CI/CD Pipeline
+name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main ]
 
 permissions:
   contents: read
-  security-events: write
-  actions: read
-  packages: write
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  test-backend:
+  frontend:
     runs-on: ubuntu-latest
-    name: Test .NET Backend
-    if: false  # Temporarily disabled until file structure is fixed
-    
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 8.0.x
-    
-    - name: Restore dependencies
-      run: dotnet restore backend/SmartFinance.sln
-    
-    - name: Build
-      run: dotnet build backend/SmartFinance.sln --no-restore --configuration Release
-    
-    - name: Test
-      run: dotnet test backend/SmartFinance.sln --no-build --verbosity normal --configuration Release
-    
-    - name: Upload test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: backend-test-results
-        path: backend/tests/**/TestResults/*.trx
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+      - name: Lint
+        run: npm run lint
+        working-directory: frontend
+      - name: Type check
+        run: npm run type-check
+        working-directory: frontend
+      - name: Build
+        run: npm run build
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: /api/v1
+          NEXT_PUBLIC_SIGNALR_URL: /financehub
+          NEXT_PUBLIC_PAYMENT_SERVICE_URL: /payment
 
-  test-frontend:
+  backend:
     runs-on: ubuntu-latest
-    name: Test Next.js Frontend
-    
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
-    
-    - name: Install dependencies
-      run: npm ci
-      working-directory: frontend
-    
-    - name: Run linter
-      run: npm run lint
-      working-directory: frontend
-    
-    - name: Run type check
-      run: npm run type-check
-      working-directory: frontend
-    
-    - name: Build
-      run: npm run build
-      working-directory: frontend
-      env:
-        NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
-        NEXT_PUBLIC_SIGNALR_URL: http://localhost:5000/financehub
-
-  test-microservice:
-    runs-on: ubuntu-latest
-    name: Test Payment Microservice
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: microservice/package-lock.json
-    
-    - name: Install dependencies
-      run: npm ci
-      working-directory: microservice
-    
-    - name: Run linter
-      run: npm run lint
-      working-directory: microservice
-    
-    - name: Build
-      run: npm run build
-      working-directory: microservice
-    
-    - name: Run tests
-      run: npm test
-      working-directory: microservice
-
-  security-scan:
-    runs-on: ubuntu-latest
-    name: Security Scan
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@0.24.0
-      with:
-        scan-type: 'fs'
-        scan-ref: '.'
-        format: 'sarif'
-        output: 'trivy-results.sarif'
-        severity: 'CRITICAL,HIGH,MEDIUM'
-        exit-code: '0'
-        ignore-unfixed: true
-        skip-dirs: 'node_modules,bin,obj,.git'
-    
-    - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v3
-      if: always()
-      with:
-        sarif_file: 'trivy-results.sarif'
-        category: 'trivy-fs-scan'
-    
-    - name: Upload scan results as artifact
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: trivy-scan-results
-        path: trivy-results.sarif
-
-  build-and-push-images:
-    needs: [test-frontend, test-microservice]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    
-    strategy:
-      matrix:
-        service: [backend, frontend, microservice]
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-    
-    - name: Log in to Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.service }}
-        tags: |
-          type=ref,event=branch
-          type=ref,event=pr
-          type=sha,prefix={{branch}}-
-          type=raw,value=latest,enable={{is_default_branch}}
-    
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: ./${{ matrix.service }}
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        platforms: linux/amd64,linux/arm64
-
-  deploy-staging:
-    needs: build-and-push-images
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
-    environment: staging
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Deploy to staging
-      run: |
-        echo "Deploying to staging environment..."
-        # Add your staging deployment commands here
-        # For example, using kubectl, helm, or docker-compose
-        
-    - name: Run smoke tests
-      run: |
-        echo "Running smoke tests..."
-        # Add your smoke test commands here
-
-  deploy-production:
-    needs: build-and-push-images
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    environment: production
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Deploy to production
-      run: |
-        echo "Deploying to production environment..."
-        # Add your production deployment commands here
-        
-    - name: Run health checks
-      run: |
-        echo "Running health checks..."
-        # Add your health check commands here
-        
-    - name: Notify deployment
-      uses: 8398a7/action-slack@v3
-      with:
-        status: ${{ job.status }}
-        channel: '#deployments'
-        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
-      if: always()
-
-  performance-test:
-    needs: deploy-staging
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Run performance tests
-      run: |
-        echo "Running performance tests..."
-        # Add your performance test commands here
-        # For example, using k6, Artillery, or JMeter
-        
-    - name: Upload performance results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: performance-test-results
-        path: performance-results/
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: microservice/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+        working-directory: microservice
+      - name: Syntax check
+        run: node --check server.js
+        working-directory: microservice

@@ -1,12 +1,12 @@
 # Multi-stage build optimized for t2.micro instance
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
 RUN apk add --no-cache libc6-compat dumb-init curl
 WORKDIR /app
 
 # Install dependencies
 FROM base AS deps
 COPY package*.json ./
-RUN npm install --only=production && npm cache clean --force
+RUN npm install && npm cache clean --force
 
 # Build stage
 FROM base AS builder
@@ -37,7 +37,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Create health check endpoint
-RUN echo '{"status":"healthy","timestamp":"'$(date -Iseconds)'"}' > ./public/api/health.json
+RUN mkdir -p ./public/api && echo '{"status":"healthy","timestamp":"'$(date -Iseconds)'"}' > ./public/api/health.json
 
 USER nextjs
 

@@ -10,8 +10,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { useTranslation } from '@/i18n/locale-context';
 import { Pencil } from 'lucide-react';
 
 interface EditTransactionDialogProps {
@@ -37,9 +38,9 @@ export const EditTransactionDialog = ({ transaction, onSuccess, children }: Edit
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
-    type: undefined as string | undefined,
-    categoryId: undefined as string | undefined,
-    accountId: undefined as string | undefined,
+    type: '',
+    categoryId: '',
+    accountId: '',
     transactionDate: '',
     isRecurring: false,
     notes: '',
@@ -61,19 +62,22 @@ export const EditTransactionDialog = ({ transaction, onSuccess, children }: Edit
 
   const categories = categoriesData?.items || [];
   const accounts = accountsData?.items || [];
+  const { localize } = useTranslation();
 
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) => transactionService.updateTransaction(transaction.id, data),
     onSuccess: () => {
-      toast.success('Transaction updated successfully!');
+      toast.success(localize('Transação atualizada com sucesso!', 'Transaction updated successfully!'));
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       setOpen(false);
       onSuccess?.();
     },
     onError: (error: Error & { response?: { data?: { message?: string } } }) => {
       console.error('Error updating transaction:', error);
-      toast.error(error.response?.data?.message || 'Failed to update transaction');
+      toast.error(
+        error.response?.data?.message || localize('Falha ao atualizar a transação.', 'Failed to update transaction')
+      );
     },
   });
 
@@ -102,7 +106,7 @@ export const EditTransactionDialog = ({ transaction, onSuccess, children }: Edit
       const updateData = {
         description: formData.description.trim(),
         amount: parseFloat(formData.amount),
-        type: parseInt(formData.type) as TransactionType,
+        type: parseInt(formData.type!) as TransactionType,
         categoryId: formData.categoryId || undefined,
         accountId: formData.accountId,
         transactionDate: formData.transactionDate,
@@ -136,21 +140,24 @@ export const EditTransactionDialog = ({ transaction, onSuccess, children }: Edit
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Edit Transaction</DialogTitle>
+          <DialogDescription>
+            Update the transaction details and save your changes.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">{localize('Descrição', 'Description')}</Label>
               <Input
                 id="description"
                 value={formData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
-                placeholder="Enter description"
+                placeholder={localize('Informe a descrição', 'Enter description')}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="amount">Amount</Label>
+              <Label htmlFor="amount">{localize('Valor', 'Amount')}</Label>
               <Input
                 id="amount"
                 type="number"
@@ -166,19 +173,19 @@ export const EditTransactionDialog = ({ transaction, onSuccess, children }: Edit
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="type">Type</Label>
-              <Select value={formData.type || undefined} onValueChange={(value) => handleInputChange('type', value)}>
+              <Label htmlFor="type">{localize('Tipo', 'Type')}</Label>
+              <Select value={formData.type} onValueChange={(value) => handleInputChange('type', value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
+                  <SelectValue placeholder={localize('Selecione o tipo', 'Select type')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="0">Income</SelectItem>
-                  <SelectItem value="1">Expense</SelectItem>
+                  <SelectItem value="0">{localize('Receita', 'Income')}</SelectItem>
+                  <SelectItem value="1">{localize('Despesa', 'Expense')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="transactionDate">Date</Label>
+              <Label htmlFor="transactionDate">{localize('Data', 'Date')}</Label>
               <Input
                 id="transactionDate"
                 type="date"
@@ -191,10 +198,10 @@ export const EditTransactionDialog = ({ transaction, onSuccess, children }: Edit
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <Select value={formData.categoryId || undefined} onValueChange={(value) => handleInputChange('categoryId', value)}>
+              <Label htmlFor="category">{localize('Categoria', 'Category')}</Label>
+              <Select value={formData.categoryId} onValueChange={(value) => handleInputChange('categoryId', value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue placeholder={localize('Selecione a categoria', 'Select category')} />
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map((category: { id: string; name: string }) => (
@@ -206,10 +213,10 @@ export const EditTransactionDialog = ({ transaction, onSuccess, children }: Edit
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="account">Account</Label>
-              <Select value={formData.accountId || undefined} onValueChange={(value) => handleInputChange('accountId', value)}>
+              <Label htmlFor="account">{localize('Conta', 'Account')}</Label>
+              <Select value={formData.accountId} onValueChange={(value) => handleInputChange('accountId', value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select account" />
+                  <SelectValue placeholder={localize('Selecione a conta', 'Select account')} />
                 </SelectTrigger>
                 <SelectContent>
                   {accounts.map((account: { id: string; name: string }) => (
@@ -223,22 +230,22 @@ export const EditTransactionDialog = ({ transaction, onSuccess, children }: Edit
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="reference">Reference (Optional)</Label>
+            <Label htmlFor="reference">{localize('Referência (Opcional)', 'Reference (Optional)')}</Label>
             <Input
               id="reference"
               value={formData.reference}
               onChange={(e) => handleInputChange('reference', e.target.value)}
-              placeholder="Enter reference"
+              placeholder={localize('Informe uma referência', 'Enter reference')}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes (Optional)</Label>
+            <Label htmlFor="notes">{localize('Observações (Opcional)', 'Notes (Optional)')}</Label>
             <Input
               id="notes"
               value={formData.notes}
               onChange={(e) => handleInputChange('notes', e.target.value)}
-              placeholder="Enter notes"
+              placeholder={localize('Informe observações', 'Enter notes')}
             />
           </div>
 
@@ -250,15 +257,15 @@ export const EditTransactionDialog = ({ transaction, onSuccess, children }: Edit
               onChange={(e) => handleInputChange('isRecurring', e.target.checked)}
               className="rounded"
             />
-            <Label htmlFor="isRecurring">Recurring Transaction</Label>
+            <Label htmlFor="isRecurring">{localize('Transação recorrente', 'Recurring Transaction')}</Label>
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
+              {localize('Cancelar', 'Cancel')}
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Updating...' : 'Update Transaction'}
+              {loading ? localize('Atualizando...', 'Updating...') : localize('Atualizar transação', 'Update Transaction')}
             </Button>
           </div>
         </form>

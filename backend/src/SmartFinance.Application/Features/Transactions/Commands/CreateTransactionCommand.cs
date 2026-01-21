@@ -1,8 +1,9 @@
 using MediatR;
 using SmartFinance.Application.Common.DTOs;
-using SmartFinance.Domain.Interfaces;
+using SmartFinance.Application.Common.Utils;
 using SmartFinance.Domain.Entities;
 using SmartFinance.Domain.Enums;
+using SmartFinance.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace SmartFinance.Application.Features.Transactions.Commands;
@@ -65,11 +66,12 @@ public class CreateTransactionCommandHandler : IRequestHandler<CreateTransaction
             throw new ArgumentException("Account not found or doesn't belong to user");
         }
 
+        var transactionDate = DateTimeUtils.NormalizeToUtc(request.TransactionDate);
         var transaction = new Transaction
         {
             Amount = request.Amount,
             Description = request.Description,
-            TransactionDate = request.TransactionDate,
+            TransactionDate = transactionDate,
             Type = request.Type,
             Status = TransactionStatus.Pending,
             AccountId = accountId,

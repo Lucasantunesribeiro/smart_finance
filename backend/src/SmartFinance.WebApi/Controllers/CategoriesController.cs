@@ -1,6 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
+using SmartFinance.Domain.Entities;
+using SmartFinance.Domain.Enums;
+using SmartFinance.Infrastructure.Data;
 using System.Security.Claims;
 
 namespace SmartFinance.WebApi.Controllers;
@@ -12,10 +16,12 @@ namespace SmartFinance.WebApi.Controllers;
 public class CategoriesController : ControllerBase
 {
     private readonly ILogger<CategoriesController> _logger;
+    private readonly SmartFinanceDbContext _context;
 
-    public CategoriesController(ILogger<CategoriesController> logger)
+    public CategoriesController(ILogger<CategoriesController> logger, SmartFinanceDbContext context)
     {
         _logger = logger;
+        _context = context;
     }
 
     [HttpGet]
@@ -30,72 +36,106 @@ public class CategoriesController : ControllerBase
     {
         try
         {
-            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-            var userId = userIdClaim?.Value ?? "unknown";
-            
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown";
             _logger.LogInformation("Getting categories for user {UserId}", userId);
-            
-            // Generate realistic demo categories
-            var allCategories = GetMockCategories();
-            
-            // Apply filters
-            var filteredCategories = allCategories.AsQueryable();
-            
+
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 1;
+            if (pageSize > 100) pageSize = 100;
+
+            var query = _context.Categories.AsNoTracking();
+
             if (isActive.HasValue)
             {
-                filteredCategories = filteredCategories.Where(c => c.isActive == isActive.Value);
+                query = query.Where(c => c.IsActive == isActive.Value);
             }
-            
+
             if (type.HasValue)
             {
-                filteredCategories = filteredCategories.Where(c => c.type == type.Value);
+                query = query.Where(c => (int)c.Type == type.Value);
             }
-            
-            if (!string.IsNullOrEmpty(search))
+
+            if (!string.IsNullOrWhiteSpace(search))
             {
-                filteredCategories = filteredCategories.Where(c => 
-                    c.name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    (c.description != null && c.description.Contains(search, StringComparison.OrdinalIgnoreCase)));
+                var searchTerm = $"%{search.Trim()}%";
+                query = query.Where(c =>
+                    EF.Functions.Like(c.Name, searchTerm) ||
+                    (c.Description != null && EF.Functions.Like(c.Description, searchTerm)));
             }
-            
-            // Apply sorting
-            filteredCategories = sortBy.ToLower() switch
-            {
-                "name" => sortOrder.ToLower() == "desc" 
-                    ? filteredCategories.OrderByDescending(c => c.name)
-                    : filteredCategories.OrderBy(c => c.name),
-                "type" => sortOrder.ToLower() == "desc" 
-                    ? filteredCategories.OrderByDescending(c => c.type)
-                    : filteredCategories.OrderBy(c => c.type),
-                "createdat" => sortOrder.ToLower() == "desc" 
-                    ? filteredCategories.OrderByDescending(c => c.createdAt)
-                    : filteredCategories.OrderBy(c => c.createdAt),
-                _ => filteredCategories.OrderBy(c => c.name)
-            };
-            
-            var totalCount = filteredCategories.Count();
-            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
-            
-            var pagedCategories = filteredCategories
+
+            query = ApplySorting(query, sortBy, sortOrder);
+
+            var totalCount = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+            var rawItems = await query
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .ToList();
+                .Select(c => new
+                {
+                    c.Id,
+                    c.Name,
+                    c.Type,
+                    c.Description,
+                    c.Color,
+                    c.Icon,
+                    c.ParentId,
+                    ParentName = c.Parent != null ? c.Parent.Name : null,
+                    c.IsActive,
+                    c.CreatedAt,
+                    c.UpdatedAt
+                })
+                .ToListAsync();
 
-            var result = new
+            var categoryIds = rawItems.Select(c => c.Id).ToList();
+            var transactionStats = await _context.Transactions
+                .AsNoTracking()
+                .Where(t => t.CategoryId.HasValue && categoryIds.Contains(t.CategoryId.Value) && !t.IsDeleted)
+                .GroupBy(t => t.CategoryId!.Value)
+                .Select(g => new
+                {
+                    CategoryId = g.Key,
+                    Count = g.Count(),
+                    TotalAmount = g.Sum(t => (double)t.Amount)
+                })
+                .ToListAsync();
+
+            var statsMap = transactionStats.ToDictionary(s => s.CategoryId, s => s);
+
+            var items = rawItems.Select(c =>
             {
-                items = pagedCategories,
-                totalCount = totalCount,
-                page = page,
-                pageSize = pageSize,
-                totalPages = totalPages
-            };
+                statsMap.TryGetValue(c.Id, out var stats);
+                return new CategoryDto
+                {
+                    id = c.Id.ToString(),
+                    name = c.Name,
+                    type = (int)c.Type,
+                    description = c.Description,
+                    color = c.Color,
+                    icon = c.Icon,
+                    parentId = c.ParentId.HasValue ? c.ParentId.Value.ToString() : null,
+                    parentName = c.ParentName,
+                    isActive = c.IsActive,
+                    transactionCount = stats?.Count ?? 0,
+                    totalAmount = stats != null ? Convert.ToDecimal(stats.TotalAmount) : 0m,
+                    createdAt = c.CreatedAt.ToString("o"),
+                    updatedAt = c.UpdatedAt.ToString("o")
+                };
+            }).ToList();
 
-            return Ok(result);
+            return Ok(new
+            {
+                items,
+                totalCount,
+                page,
+                pageSize,
+                totalPages
+            });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving categories for user {UserId}", 
-                User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown");
+            _logger.LogError(ex, "Error retrieving categories for user {UserId}",
+                User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown");
             return StatusCode(500, new { message = "An error occurred while retrieving categories" });
         }
     }
@@ -105,25 +145,46 @@ public class CategoriesController : ControllerBase
     {
         try
         {
-            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-            var userId = userIdClaim?.Value ?? "unknown";
-            
-            _logger.LogInformation("Getting category {CategoryId} for user {UserId}", id, userId);
-            
-            var categories = GetMockCategories();
-            var category = categories.FirstOrDefault(c => c.id == id);
-            
+            if (!Guid.TryParse(id, out var categoryId))
+            {
+                return BadRequest(new { message = "Invalid category id" });
+            }
+
+            var category = await _context.Categories
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == categoryId);
+
             if (category == null)
             {
                 return NotFound(new { message = "Category not found" });
             }
 
-            return Ok(category);
+            var transactionCount = await _context.Transactions.CountAsync(t => t.CategoryId == categoryId && !t.IsDeleted);
+            var totalAmountDouble = await _context.Transactions
+                .Where(t => t.CategoryId == categoryId && !t.IsDeleted)
+                .SumAsync(t => (double?)t.Amount) ?? 0d;
+            var totalAmount = Convert.ToDecimal(totalAmountDouble);
+
+            return Ok(new CategoryDto
+            {
+                id = category.Id.ToString(),
+                name = category.Name,
+                type = (int)category.Type,
+                description = category.Description,
+                color = category.Color,
+                icon = category.Icon,
+                parentId = category.ParentId?.ToString(),
+                parentName = null,
+                isActive = category.IsActive,
+                transactionCount = transactionCount,
+                totalAmount = totalAmount,
+                createdAt = category.CreatedAt.ToString("o"),
+                updatedAt = category.UpdatedAt.ToString("o")
+            });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving category {CategoryId} for user {UserId}", 
-                id, User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown");
+            _logger.LogError(ex, "Error retrieving category {CategoryId}", id);
             return StatusCode(500, new { message = "An error occurred while retrieving category" });
         }
     }
@@ -133,39 +194,69 @@ public class CategoriesController : ControllerBase
     {
         try
         {
-            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-            var userId = userIdClaim?.Value ?? "unknown";
-            
-            _logger.LogInformation("Creating category for user {UserId}", userId);
-            
             if (string.IsNullOrWhiteSpace(request.name))
             {
                 return BadRequest(new { message = "Category name is required" });
             }
-            
-            var newCategory = new
+
+            var categoryType = CategoryType.Expense;
+            if (request.type.HasValue)
             {
-                id = Guid.NewGuid().ToString(),
-                name = request.name,
-                type = request.type ?? 1, // Default to Expense
-                description = request.description,
-                color = request.color ?? "#3b82f6",
-                icon = request.icon,
-                parentId = request.parentCategoryId,
-                parentName = (string?)null,
-                isActive = true,
-                transactionCount = 0,
-                totalAmount = 0.00m,
-                createdAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                updatedAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+                if (!Enum.IsDefined(typeof(CategoryType), request.type.Value))
+                {
+                    return BadRequest(new { message = "Invalid category type" });
+                }
+                categoryType = (CategoryType)request.type.Value;
+            }
+
+            Guid? parentId = null;
+            if (!string.IsNullOrWhiteSpace(request.parentCategoryId))
+            {
+                if (!Guid.TryParse(request.parentCategoryId, out var parsedParentId))
+                {
+                    return BadRequest(new { message = "Invalid parent category id" });
+                }
+                parentId = parsedParentId;
+            }
+
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "system";
+
+            var category = new Category
+            {
+                Name = request.name.Trim(),
+                Type = categoryType,
+                Description = string.IsNullOrWhiteSpace(request.description) ? null : request.description.Trim(),
+                Color = string.IsNullOrWhiteSpace(request.color) ? "#3b82f6" : request.color.Trim(),
+                Icon = request.icon,
+                ParentId = parentId,
+                IsActive = true,
+                CreatedBy = userId,
+                UpdatedBy = userId
             };
 
-            return CreatedAtAction(nameof(GetCategory), new { id = newCategory.id }, newCategory);
+            _context.Categories.Add(category);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(GetCategory), new { id = category.Id }, new CategoryDto
+            {
+                id = category.Id.ToString(),
+                name = category.Name,
+                type = (int)category.Type,
+                description = category.Description,
+                color = category.Color,
+                icon = category.Icon,
+                parentId = category.ParentId?.ToString(),
+                parentName = null,
+                isActive = category.IsActive,
+                transactionCount = 0,
+                totalAmount = 0m,
+                createdAt = category.CreatedAt.ToString("o"),
+                updatedAt = category.UpdatedAt.ToString("o")
+            });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating category for user {UserId}", 
-                User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown");
+            _logger.LogError(ex, "Error creating category");
             return StatusCode(500, new { message = "An error occurred while creating category" });
         }
     }
@@ -175,43 +266,96 @@ public class CategoriesController : ControllerBase
     {
         try
         {
-            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-            var userId = userIdClaim?.Value ?? "unknown";
-            
-            _logger.LogInformation("Updating category {CategoryId} for user {UserId}", id, userId);
-            
-            var categories = GetMockCategories();
-            var category = categories.FirstOrDefault(c => c.id == id);
-            
+            if (!Guid.TryParse(id, out var categoryId))
+            {
+                return BadRequest(new { message = "Invalid category id" });
+            }
+
+            var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == categoryId);
             if (category == null)
             {
                 return NotFound(new { message = "Category not found" });
             }
-            
-            // Update category (in real app, this would update database)
-            var updatedCategory = new
-            {
-                id = category.id,
-                name = request.name ?? category.name,
-                type = request.type ?? category.type,
-                description = request.description ?? category.description,
-                color = request.color ?? category.color,
-                icon = request.icon ?? category.icon,
-                parentId = request.parentCategoryId ?? category.parentId,
-                parentName = category.parentName,
-                isActive = request.isActive ?? category.isActive,
-                transactionCount = category.transactionCount,
-                totalAmount = category.totalAmount,
-                createdAt = category.createdAt,
-                updatedAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
-            };
 
-            return Ok(updatedCategory);
+            if (request.name != null)
+            {
+                if (string.IsNullOrWhiteSpace(request.name))
+                {
+                    return BadRequest(new { message = "Category name cannot be empty" });
+                }
+                category.Name = request.name.Trim();
+            }
+
+            if (request.type.HasValue)
+            {
+                if (!Enum.IsDefined(typeof(CategoryType), request.type.Value))
+                {
+                    return BadRequest(new { message = "Invalid category type" });
+                }
+                category.Type = (CategoryType)request.type.Value;
+            }
+
+            if (request.description != null)
+            {
+                category.Description = string.IsNullOrWhiteSpace(request.description) ? null : request.description.Trim();
+            }
+
+            if (request.color != null)
+            {
+                category.Color = string.IsNullOrWhiteSpace(request.color) ? "#3b82f6" : request.color.Trim();
+            }
+
+            if (request.icon != null)
+            {
+                category.Icon = request.icon;
+            }
+
+            if (request.parentCategoryId != null)
+            {
+                if (string.IsNullOrWhiteSpace(request.parentCategoryId))
+                {
+                    category.ParentId = null;
+                }
+                else if (!Guid.TryParse(request.parentCategoryId, out var parsedParentId))
+                {
+                    return BadRequest(new { message = "Invalid parent category id" });
+                }
+                else
+                {
+                    category.ParentId = parsedParentId;
+                }
+            }
+
+            if (request.isActive.HasValue)
+            {
+                category.IsActive = request.isActive.Value;
+            }
+
+            category.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return Ok(new CategoryDto
+            {
+                id = category.Id.ToString(),
+                name = category.Name,
+                type = (int)category.Type,
+                description = category.Description,
+                color = category.Color,
+                icon = category.Icon,
+                parentId = category.ParentId?.ToString(),
+                parentName = null,
+                isActive = category.IsActive,
+                transactionCount = await _context.Transactions.CountAsync(t => t.CategoryId == category.Id && !t.IsDeleted),
+                totalAmount = Convert.ToDecimal(await _context.Transactions
+                    .Where(t => t.CategoryId == category.Id && !t.IsDeleted)
+                    .SumAsync(t => (double?)t.Amount) ?? 0d),
+                createdAt = category.CreatedAt.ToString("o"),
+                updatedAt = category.UpdatedAt.ToString("o")
+            });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating category {CategoryId} for user {UserId}", 
-                id, User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown");
+            _logger.LogError(ex, "Error updating category {CategoryId}", id);
             return StatusCode(500, new { message = "An error occurred while updating category" });
         }
     }
@@ -221,26 +365,27 @@ public class CategoriesController : ControllerBase
     {
         try
         {
-            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-            var userId = userIdClaim?.Value ?? "unknown";
-            
-            _logger.LogInformation("Deleting category {CategoryId} for user {UserId}", id, userId);
-            
-            var categories = GetMockCategories();
-            var category = categories.FirstOrDefault(c => c.id == id);
-            
+            if (!Guid.TryParse(id, out var categoryId))
+            {
+                return BadRequest(new { message = "Invalid category id" });
+            }
+
+            var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == categoryId);
             if (category == null)
             {
                 return NotFound(new { message = "Category not found" });
             }
-            
-            // In real app, this would soft delete or check for dependencies
+
+            category.IsDeleted = true;
+            category.IsActive = false;
+            category.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
             return NoContent();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting category {CategoryId} for user {UserId}", 
-                id, User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown");
+            _logger.LogError(ex, "Error deleting category {CategoryId}", id);
             return StatusCode(500, new { message = "An error occurred while deleting category" });
         }
     }
@@ -250,34 +395,46 @@ public class CategoriesController : ControllerBase
     {
         try
         {
-            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-            var userId = userIdClaim?.Value ?? "unknown";
-            
-            _logger.LogInformation("Getting stats for category {CategoryId} for user {UserId}", id, userId);
-            
-            var random = new Random();
-            var stats = new
+            if (!Guid.TryParse(id, out var categoryId))
             {
-                totalTransactions = random.Next(15, 50),
-                totalAmount = Math.Round((decimal)(random.NextDouble() * 2000 + 500), 2),
-                averageAmount = Math.Round((decimal)(random.NextDouble() * 200 + 50), 2),
-                lastTransaction = DateTime.UtcNow.AddDays(-random.Next(1, 30)).ToString("yyyy-MM-ddTHH:mm:ssZ")
-            };
+                return BadRequest(new { message = "Invalid category id" });
+            }
 
-            return Ok(stats);
+            var transactions = _context.Transactions
+                .AsNoTracking()
+                .Where(t => t.CategoryId == categoryId && !t.IsDeleted);
+
+            var totalTransactions = await transactions.CountAsync();
+            var totalAmountDouble = await transactions.SumAsync(t => (double?)t.Amount) ?? 0d;
+            var totalAmount = Convert.ToDecimal(totalAmountDouble);
+            var averageAmount = totalTransactions > 0 ? totalAmount / totalTransactions : 0m;
+            var lastTransactionDate = await transactions.MaxAsync(t => (DateTime?)t.TransactionDate);
+
+            return Ok(new
+            {
+                totalTransactions,
+                totalAmount,
+                averageAmount,
+                lastTransaction = lastTransactionDate?.ToString("o")
+            });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving stats for category {CategoryId} for user {UserId}", 
-                id, User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown");
+            _logger.LogError(ex, "Error retrieving stats for category {CategoryId}", id);
             return StatusCode(500, new { message = "An error occurred while retrieving category stats" });
         }
     }
 
-    private CategoryDto[] GetMockCategories()
+    private static IQueryable<Category> ApplySorting(IQueryable<Category> query, string sortBy, string sortOrder)
     {
-        // TODO: Replace with real database query to get categories
-        return new CategoryDto[0]; // Empty array until real implementation
+        var descending = string.Equals(sortOrder, "desc", StringComparison.OrdinalIgnoreCase);
+        return sortBy.ToLowerInvariant() switch
+        {
+            "type" => descending ? query.OrderByDescending(c => c.Type) : query.OrderBy(c => c.Type),
+            "createdat" => descending ? query.OrderByDescending(c => c.CreatedAt) : query.OrderBy(c => c.CreatedAt),
+            "updatedat" => descending ? query.OrderByDescending(c => c.UpdatedAt) : query.OrderBy(c => c.UpdatedAt),
+            _ => descending ? query.OrderByDescending(c => c.Name) : query.OrderBy(c => c.Name)
+        };
     }
 
     public class CreateCategoryRequest

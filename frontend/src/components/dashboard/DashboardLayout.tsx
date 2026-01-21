@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { LocaleToggle } from "@/components/ui/locale-toggle";
 import {
   Menu,
   Bell,
@@ -36,6 +37,7 @@ import {
   Settings,
   LogOut
 } from 'lucide-react';
+import { useTranslation } from '@/i18n/locale-context';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -46,16 +48,17 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { t } = useTranslation();
 
   const sidebarItems = [
-    { icon: Home, label: 'Overview', href: '/dashboard' },
-    { icon: Receipt, label: 'Transactions', href: '/dashboard/transactions' },
-    { icon: Wallet, label: 'Accounts', href: '/dashboard/accounts' },
-    { icon: Target, label: 'Budgets', href: '/dashboard/budgets' },
-    { icon: PieChart, label: 'Categories', href: '/dashboard/categories' },
-    { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
-    { icon: Calendar, label: 'Reports', href: '/dashboard/reports' },
-    { icon: Settings, label: 'Settings', href: '/dashboard/settings' },
+    { icon: Home, labelKey: 'sidebarOverview', href: '/dashboard' },
+    { icon: Receipt, labelKey: 'sidebarTransactions', href: '/dashboard/transactions' },
+    { icon: Wallet, labelKey: 'sidebarAccounts', href: '/dashboard/accounts' },
+    { icon: Target, labelKey: 'sidebarBudgets', href: '/dashboard/budgets' },
+    { icon: PieChart, labelKey: 'sidebarCategories', href: '/dashboard/categories' },
+    { icon: BarChart3, labelKey: 'sidebarAnalytics', href: '/dashboard/analytics' },
+    { icon: Calendar, labelKey: 'sidebarReports', href: '/dashboard/reports' },
+    { icon: Settings, labelKey: 'sidebarSettings', href: '/dashboard/settings' },
   ];
 
   const handleNavigation = (href: string) => {
@@ -78,36 +81,37 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="lg:hidden">
                   <Menu className="h-5 w-5" />
-                  <span className="sr-only">Toggle menu</span>
+                  <span className="sr-only">{t('toggleMenuLabel')}</span>
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-64">
                 <SheetHeader>
-                  <SheetTitle>SmartFinance</SheetTitle>
-                  <SheetDescription>Financial Management</SheetDescription>
+                  <SheetTitle>{t('sheetTitle')}</SheetTitle>
+                  <SheetDescription>{t('sheetDescription')}</SheetDescription>
                 </SheetHeader>
                 <nav className="mt-8 space-y-2">
                   {sidebarItems.map((item) => (
                     <Button
-                      key={item.label}
+                      key={item.labelKey}
                       variant={isActivePage(item.href) ? "default" : "ghost"}
                       className="w-full justify-start"
                       onClick={() => handleNavigation(item.href)}
                     >
                       <item.icon className="mr-2 h-4 w-4" />
-                      {item.label}
+                      {t(item.labelKey)}
                     </Button>
                   ))}
                 </nav>
               </SheetContent>
             </Sheet>
-            <h1 className="ml-2 text-lg font-semibold lg:ml-0">SmartFinance</h1>
+            <h1 className="ml-2 text-lg font-semibold lg:ml-0">{t('sheetTitle')}</h1>
           </div>
 
           <div className="flex items-center space-x-2">
             <Button variant="outline" size="icon">
               <Bell className="h-4 w-4" />
             </Button>
+            <LocaleToggle />
             <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -128,12 +132,12 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => handleNavigation('/dashboard/settings')}>
                   <Settings className="mr-2 h-4 w-4" />
-                  Settings
+                  {t('dropdownSettings')}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => logout()}>
                   <LogOut className="mr-2 h-4 w-4" />
-                  Log out
+                  {t('dropdownLogout')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -147,13 +151,13 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           <nav className="space-y-2">
             {sidebarItems.map((item) => (
               <Button
-                key={item.label}
+                key={item.labelKey}
                 variant={isActivePage(item.href) ? "default" : "ghost"}
                 className="w-full justify-start"
                 onClick={() => handleNavigation(item.href)}
               >
                 <item.icon className="mr-2 h-4 w-4" />
-                {item.label}
+                {t(item.labelKey)}
               </Button>
             ))}
           </nav>

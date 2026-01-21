@@ -1,15 +1,36 @@
 import axios, { AxiosError } from 'axios';
-import { AuthResponse, RefreshTokenRequest } from '@/types/auth';
+import { AuthResponse } from '@/types/auth';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+const getAccessToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('accessToken');
+};
+
+const getRefreshToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('refreshToken');
+};
+
+const storeTokens = (data: AuthResponse) => {
+  if (typeof window === 'undefined') return;
+  if (data.accessToken) {
+    localStorage.setItem('accessToken', data.accessToken);
+  }
+  if (data.refreshToken) {
+    localStorage.setItem('refreshToken', data.refreshToken);
+  }
+};
 
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -29,11 +50,26 @@ const processQueue = (error: AxiosError | null, token: string | null = null) => 
   failedQueue = [];
 };
 
+const getCookieValue = (name: string): string | null => {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
+  return match ? decodeURIComponent(match[2]) : null;
+};
+
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const method = (config.method || 'get').toLowerCase();
+    const unsafe = !['get', 'head', 'options'].includes(method);
+    if (unsafe) {
+      const csrfToken = getCookieValue('sf_csrf');
+      if (csrfToken) {
+        config.headers['X-CSRF-Token'] = csrfToken;
+      }
+    }
+    const accessToken = getAccessToken();
+    if (accessToken && !config.headers?.Authorization) {
+      config.headers = config.headers || {};
+      config.headers['Authorization'] = `Bearer ${accessToken}`;
     }
     return config;
   },
@@ -45,43 +81,37 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as typeof error.config & { _retry?: boolean };
 
-    // DETAILED ERROR LOGGING FOR 400 ERRORS
-    if (error.response?.status === 400) {
-      console.error('🚨 400 BAD REQUEST INTERCEPTED:');
-      console.error('URL:', error.config?.url);
-      console.error('Method:', error.config?.method);
-      console.error('Base URL:', error.config?.baseURL);
-      console.error('Full URL:', `${error.config?.baseURL}${error.config?.url}`);
-      console.error('Request headers:', error.config?.headers);
-      
-      // Parse and log request data
-      try {
-        const requestData = error.config?.data ? JSON.parse(error.config.data) : null;
-        console.error('Sent data (parsed):', requestData);
-      } catch (parseError) {
-        console.error('Sent data (raw):', error.config?.data);
-        console.error('JSON parse error:', parseError);
-      }
-      
-      // Log response details
-      console.error('Response status:', error.response.status);
-      console.error('Response statusText:', error.response.statusText);
-      console.error('Response headers:', error.response.headers);
-      console.error('Response data:', error.response.data);
-      
-      // Additional error context
-      console.error('Error message:', error.message);
-      console.error('Error code:', error.code);
-      console.error('Full error object:', error);
-      console.error('=== END 400 ERROR DEBUG ===');
-    }
-
+    if (error.response) {
+      if (error.response.status === 400) {
+        console.error('[Bad Request] Received HTTP 400');
+      }
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry) {
+      const requestUrl = originalRequest?.url || '';
+      const isAuthEndpoint =
+        requestUrl.includes('/simpleauth/login') ||
+        requestUrl.includes('/simpleauth/refresh') ||
+        requestUrl.includes('/simpleauth/me');
+      if (isAuthEndpoint) {
+        return Promise.reject(error);
+      }
+
+      const refreshToken = getRefreshToken();
+      if (!refreshToken) {
+        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         }).then((token) => {
-          originalRequest.headers.Authorization = `Bearer ${token}`;
+          if (token && originalRequest.headers) {
+            originalRequest.headers['Authorization'] = `Bearer ${token}`;
+          }
           return api(originalRequest);
         }).catch((err) => {
           return Promise.reject(err);
@@ -91,40 +121,23 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
-      const refreshToken = localStorage.getItem('refreshToken');
-      
-      if (!refreshToken) {
-        processQueue(error, null);
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-        return Promise.reject(error);
-      }
-
       try {
-        const response = await axios.post<AuthResponse>(
-          `${API_BASE_URL}/simpleauth/refresh`,
-          { refreshToken } as RefreshTokenRequest
-        );
-
-        const { accessToken, refreshToken: newRefreshToken } = response.data;
-        
-        localStorage.setItem('accessToken', accessToken);
-        localStorage.setItem('refreshToken', newRefreshToken);
-        
-        api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        
-        processQueue(null, accessToken);
-        
+        const refreshResponse = await axios.post<AuthResponse>(`${API_BASE_URL}/simpleauth/refresh`, {
+          refreshToken,
+        }, {
+          withCredentials: true,
+        });
+        storeTokens(refreshResponse.data);
+        processQueue(null, refreshResponse.data.accessToken || null);
+        if (refreshResponse.data.accessToken && originalRequest.headers) {
+          originalRequest.headers['Authorization'] = `Bearer ${refreshResponse.data.accessToken}`;
+        }
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError as AxiosError, null);
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
+        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
@@ -134,14 +147,6 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
-export const setAuthToken = (token: string | null) => {
-  if (token) {
-    api.defaults.headers.common.Authorization = `Bearer ${token}`;
-  } else {
-    delete api.defaults.headers.common.Authorization;
-  }
-};
 
 export const handleApiError = (error: unknown): string => {
   if (axios.isAxiosError(error)) {

@@ -209,7 +209,7 @@ describe('PaymentService', () => {
       });
 
       await expect(paymentService.processPayment('payment-123'))
-        .rejects.toThrow('Payment failed fraud check');
+        .rejects.toThrow('Transaction flagged as high risk');
 
       expect(mockPayment.status).toBe(PaymentStatus.FAILED);
       expect(mockPayment.failureReason).toBe('Transaction flagged as high risk');
