@@ -44,6 +44,35 @@ export type TranslationKey =
   | 'statusPending'
   | 'statusFailed'
   | 'statusUnknown';
+  | 'accountsTitle'
+  | 'accountsSubtitle'
+  | 'addAccount'
+  | 'createAccountTitle'
+  | 'editAccountTitle'
+  | 'accountName'
+  | 'accountType'
+  | 'initialBalance'
+  | 'descriptionLabel'
+  | 'cancel'
+  | 'confirmDelete'
+  | 'createAccountSuccess'
+  | 'updateAccountSuccess'
+  | 'deleteAccountSuccess'
+  | 'active'
+  | 'inactive'
+  | 'balanceLabel'
+  | 'accountTypeChecking'
+  | 'accountTypeSavings'
+  | 'accountTypeCredit'
+  | 'accountTypeInvestment'
+  | 'accountTypeLoan'
+  | 'accountsEmptyTitle'
+  | 'accountsEmptyDescription'
+  | 'addAccountAction'
+  | 'accountStatus'
+  | 'currencyLabel'
+  | 'creatingAccount'
+  | 'updatingAccount';
 
 type TranslationDictionary = Record<TranslationKey, string>;
 
@@ -92,6 +121,35 @@ const translations: Record<Locale, TranslationDictionary> = {
     statusPending: 'Pendente',
     statusFailed: 'Falhou',
     statusUnknown: 'Desconhecido',
+    accountsTitle: 'Contas',
+    accountsSubtitle: 'Gerencie suas contas financeiras',
+    addAccount: 'Adicionar conta',
+    createAccountTitle: 'Criar nova conta',
+    editAccountTitle: 'Editar conta',
+    accountName: 'Nome da conta',
+    accountType: 'Tipo da conta',
+    initialBalance: 'Saldo inicial',
+    descriptionLabel: 'Descrição',
+    cancel: 'Cancelar',
+    confirmDelete: 'Tem certeza que deseja excluir a conta?',
+    createAccountSuccess: 'Conta criada com sucesso!',
+    updateAccountSuccess: 'Conta atualizada com sucesso!',
+    deleteAccountSuccess: 'Conta deletada com sucesso!',
+    active: 'Ativa',
+    inactive: 'Inativa',
+    balanceLabel: 'Saldo atual',
+    accountTypeChecking: 'Conta corrente',
+    accountTypeSavings: 'Poupança',
+    accountTypeCredit: 'Cartão de crédito',
+    accountTypeInvestment: 'Investimento',
+    accountTypeLoan: 'Empréstimo',
+    accountsEmptyTitle: 'Nenhuma conta encontrada',
+    accountsEmptyDescription: 'Comece adicionando sua primeira conta financeira.',
+    addAccountAction: 'Adicionar sua primeira conta',
+    accountStatus: 'Status',
+    currencyLabel: 'Moeda',
+    creatingAccount: 'Criando...',
+    updatingAccount: 'Atualizando...',
   },
   en: {
     sheetDescription: 'Modern Financial Management',
@@ -137,6 +195,35 @@ const translations: Record<Locale, TranslationDictionary> = {
     statusPending: 'Pending',
     statusFailed: 'Failed',
     statusUnknown: 'Unknown',
+    accountsTitle: 'Accounts',
+    accountsSubtitle: 'Manage your financial accounts',
+    addAccount: 'Add Account',
+    createAccountTitle: 'Create New Account',
+    editAccountTitle: 'Edit Account',
+    accountName: 'Account Name',
+    accountType: 'Account Type',
+    initialBalance: 'Initial Balance',
+    descriptionLabel: 'Description',
+    cancel: 'Cancel',
+    confirmDelete: 'Are you sure you want to delete this account?',
+    createAccountSuccess: 'Account created successfully!',
+    updateAccountSuccess: 'Account updated successfully!',
+    deleteAccountSuccess: 'Account deleted successfully!',
+    active: 'Active',
+    inactive: 'Inactive',
+    balanceLabel: 'Current Balance',
+    accountTypeChecking: 'Checking',
+    accountTypeSavings: 'Savings',
+    accountTypeCredit: 'Credit',
+    accountTypeInvestment: 'Investment',
+    accountTypeLoan: 'Loan',
+    accountsEmptyTitle: 'No accounts found',
+    accountsEmptyDescription: 'Get started by adding your first financial account.',
+    addAccountAction: 'Add Your First Account',
+    accountStatus: 'Status',
+    currencyLabel: 'Currency',
+    creatingAccount: 'Creating...',
+    updatingAccount: 'Updating...',
   },
 };
 

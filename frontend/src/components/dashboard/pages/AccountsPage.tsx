@@ -172,40 +172,40 @@ export const AccountsPage = () => {
 
   const createAccountModal = showCreateModal ? (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h2 className="text-xl font-bold mb-4">Create New Account</h2>
+        <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <h2 className="text-xl font-bold mb-4">{localize('createAccountTitle', 'Create New Account')}</h2>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Account Name
+              {localize('accountName', 'Account Name')}
             </label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter account name"
+              placeholder={localize('accountPlaceholder', 'Enter account name')}
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Account Type
+              {localize('accountType', 'Account Type')}
             </label>
             <select
               value={formData.type}
               onChange={(e) => setFormData(prev => ({ ...prev, type: parseInt(e.target.value) as AccountType }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value={AccountType.Checking}>Checking</option>
-              <option value={AccountType.Savings}>Savings</option>
-              <option value={AccountType.Credit}>Credit</option>
-              <option value={AccountType.Investment}>Investment</option>
-              <option value={AccountType.Loan}>Loan</option>
+              <option value={AccountType.Checking}>{localize('accountTypeChecking', 'Checking')}</option>
+              <option value={AccountType.Savings}>{localize('accountTypeSavings', 'Savings')}</option>
+              <option value={AccountType.Credit}>{localize('accountTypeCredit', 'Credit')}</option>
+              <option value={AccountType.Investment}>{localize('accountTypeInvestment', 'Investment')}</option>
+              <option value={AccountType.Loan}>{localize('accountTypeLoan', 'Loan')}</option>
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Initial Balance
+              {localize('initialBalance', 'Initial Balance')}
             </label>
             <input
               type="number"
@@ -218,26 +218,28 @@ export const AccountsPage = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description
+              {localize('descriptionLabel', 'Description')}
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Account description (optional)"
+              placeholder={localize('descriptionPlaceholder', 'Account description (optional)')}
               rows={3}
             />
           </div>
         </div>
         <div className="flex justify-end space-x-2 mt-6">
           <Button variant="outline" onClick={() => setShowCreateModal(false)}>
-            Cancel
+            {localize('cancel', 'Cancel')}
           </Button>
-          <Button 
+          <Button
             onClick={handleSubmit}
             disabled={createAccountMutation.isPending}
           >
-            {createAccountMutation.isPending ? 'Creating...' : 'Create Account'}
+            {createAccountMutation.isPending
+              ? localize('creatingAccount', 'Creating...')
+              : localize('createAccountTitle', 'Create New Account')}
           </Button>
         </div>
       </div>
@@ -247,34 +249,34 @@ export const AccountsPage = () => {
   const editAccountModal = showEditModal ? (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h2 className="text-xl font-bold mb-4">Edit Account</h2>
+        <h2 className="text-xl font-bold mb-4">{localize('editAccountTitle', 'Edit Account')}</h2>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Account Name
+              {localize('accountName', 'Account Name')}
             </label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter account name"
+              placeholder={localize('accountPlaceholder', 'Enter account name')}
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Account Type
+              {localize('accountType', 'Account Type')}
             </label>
             <select
               value={formData.type}
               onChange={(e) => setFormData(prev => ({ ...prev, type: parseInt(e.target.value) as AccountType }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value={AccountType.Checking}>Checking</option>
-              <option value={AccountType.Savings}>Savings</option>
-              <option value={AccountType.Credit}>Credit</option>
-              <option value={AccountType.Investment}>Investment</option>
-              <option value={AccountType.Loan}>Loan</option>
+              <option value={AccountType.Checking}>{localize('accountTypeChecking', 'Checking')}</option>
+              <option value={AccountType.Savings}>{localize('accountTypeSavings', 'Savings')}</option>
+              <option value={AccountType.Credit}>{localize('accountTypeCredit', 'Credit')}</option>
+              <option value={AccountType.Investment}>{localize('accountTypeInvestment', 'Investment')}</option>
+              <option value={AccountType.Loan}>{localize('accountTypeLoan', 'Loan')}</option>
             </select>
           </div>
           <div>
@@ -292,7 +294,7 @@ export const AccountsPage = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description
+              {localize('descriptionLabel', 'Description')}
             </label>
             <textarea
               value={formData.description}
@@ -317,13 +319,15 @@ export const AccountsPage = () => {
         </div>
         <div className="flex justify-end space-x-2 mt-6">
           <Button variant="outline" onClick={() => setShowEditModal(false)}>
-            Cancel
+            {localize('cancel', 'Cancel')}
           </Button>
-          <Button 
+          <Button
             onClick={handleSubmit}
             disabled={updateAccountMutation.isPending}
           >
-            {updateAccountMutation.isPending ? 'Updating...' : 'Update Account'}
+            {updateAccountMutation.isPending
+              ? localize('updatingAccount', 'Updating...')
+              : localize('updateAccount', 'Update Account')}
           </Button>
         </div>
       </div>
@@ -364,17 +368,20 @@ export const AccountsPage = () => {
               <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
               <p className="text-gray-600">Manage your financial accounts</p>
             </div>
-            <Button onClick={() => setShowCreateModal(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Account
-            </Button>
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            {localize('addAccount', 'Add Account')}
+          </Button>
           </div>
 
           <EmptyState
             icon={<Wallet className="h-16 w-16" />}
-            title="No accounts found"
-            description="Get started by adding your first financial account to track your money."
-            actionLabel="Add Your First Account"
+            title={localize('accountsEmptyTitle', 'No accounts found')}
+            description={localize(
+              'Comece adicionando sua primeira conta financeira para acompanhar suas finanças.',
+              'Get started by adding your first financial account to track your money.'
+            )}
+            actionLabel={localize('addAccountAction', 'Add Your First Account')}
             onAction={() => setShowCreateModal(true)}
           />
         </div>
@@ -388,8 +395,8 @@ export const AccountsPage = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
-          <p className="text-gray-600">Manage your financial accounts</p>
+          <h1 className="text-2xl font-bold text-gray-900">{localize('accountsTitle', 'Accounts')}</h1>
+          <p className="text-gray-600">{localize('accountsSubtitle', 'Manage your financial accounts')}</p>
         </div>
         <Button onClick={() => setShowCreateModal(true)}>
           <Plus className="h-4 w-4 mr-2" />
@@ -403,7 +410,7 @@ export const AccountsPage = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Balance</p>
+                <p className="text-sm text-gray-600">{localize('balanceLabel', 'Total Balance')}</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {formatCurrency(balanceData?.totalBalance || 0)}
                 </p>
@@ -417,7 +424,7 @@ export const AccountsPage = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Assets</p>
+                <p className="text-sm text-gray-600">{localize('totalIncome', 'Total Assets')}</p>
                 <p className="text-2xl font-bold text-green-600">
                   {formatCurrency(balanceData?.totalAssets || 0)}
                 </p>
@@ -431,7 +438,7 @@ export const AccountsPage = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Liabilities</p>
+                <p className="text-sm text-gray-600">{localize('totalExpenses', 'Total Liabilities')}</p>
                 <p className="text-2xl font-bold text-red-600">
                   {formatCurrency(balanceData?.totalLiabilities || 0)}
                 </p>
@@ -445,7 +452,7 @@ export const AccountsPage = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Net Worth</p>
+                  <p className="text-sm text-gray-600">{localize('netAmount', 'Net Worth')}</p>
                 <p className="text-2xl font-bold text-blue-600">
                   {formatCurrency(balanceData?.netWorth || 0)}
                 </p>
@@ -477,7 +484,7 @@ export const AccountsPage = () => {
             <CardContent>
               <div className="space-y-4">
                 <div>
-                  <p className="text-sm text-gray-600">Current Balance</p>
+                <p className="text-sm text-gray-600">{localize('balanceLabel', 'Current Balance')}</p>
                   <p className={`text-2xl font-bold ${getBalanceColor(account.balance)}`}>
                     {formatCurrency(account.balance)}
                   </p>
@@ -485,14 +492,14 @@ export const AccountsPage = () => {
 
                 {account.description && (
                   <div>
-                    <p className="text-sm text-gray-600">Description</p>
+                    <p className="text-sm text-gray-600">{localize('descriptionLabel', 'Description')}</p>
                     <p className="text-sm text-gray-900">{account.description}</p>
                   </div>
                 )}
 
                 <div className="flex items-center justify-between pt-4 border-t">
                   <div className="flex items-center space-x-2 text-sm text-gray-500">
-                    <span>{account.isActive ? 'Active' : 'Inactive'}</span>
+                    <span>{account.isActive ? localize('active', 'Active') : localize('inactive', 'Inactive')}</span>
                     <span>•</span>
                     <span>{account.currency}</span>
                   </div>
