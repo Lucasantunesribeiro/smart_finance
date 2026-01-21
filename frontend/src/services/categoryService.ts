@@ -70,8 +70,9 @@ export const categoryService = {
     return response.data;
   },
 
-  async deleteCategory(id: string): Promise<void> {
-    await api.delete(`/categories/${id}`);
+  async deleteCategory(id: string, force?: boolean): Promise<void> {
+    const params = force ? '?force=true' : '';
+    await api.delete(`/categories/${id}${params}`);
   },
 
   async getActiveCategories(type?: CategoryType): Promise<Category[]> {

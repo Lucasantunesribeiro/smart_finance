@@ -24,44 +24,45 @@ export const ReportsPage = () => {
     toDate: new Date().toISOString().split('T')[0]
   });
   const [isGenerating, setIsGenerating] = useState(false);
+  const { localize } = useTranslation();
 
   const reportTypes = [
     {
       id: 'monthly',
-      name: 'Relatório Mensal',
-      description: 'Resumo completo das transações do mês',
+      name: localize('Relatório Mensal', 'Monthly Report'),
+      description: localize('Resumo completo das transações do mês', 'Full summary of monthly transactions'),
       icon: Calendar
     },
     {
       id: 'category',
-      name: 'Relatório por Categoria',
-      description: 'Análise de gastos por categoria',
+      name: localize('Relatório por Categoria', 'Category Report'),
+      description: localize('Análise de gastos por categoria', 'Analysis of spending by category'),
       icon: PieChart
     },
     {
       id: 'cashflow',
-      name: 'Fluxo de Caixa',
-      description: 'Análise do fluxo de entrada e saída',
+      name: localize('Fluxo de Caixa', 'Cash Flow'),
+      description: localize('Análise do fluxo de entrada e saída', 'Insight into incoming and outgoing cash'),
       icon: TrendingUp
     },
     {
       id: 'budget',
-      name: 'Relatório de Orçamento',
-      description: 'Comparação entre orçado e realizado',
+      name: localize('Relatório de Orçamento', 'Budget Report'),
+      description: localize('Comparação entre orçado e realizado', 'Comparison of budgeted versus actuals'),
       icon: BarChart3
     },
     {
       id: 'annual',
-      name: 'Relatório Anual',
-      description: 'Resumo completo do ano',
+      name: localize('Relatório Anual', 'Annual Report'),
+      description: localize('Resumo completo do ano', 'Yearly summary'),
       icon: FileText
     }
   ];
 
   const exportFormats = [
-    { id: 'pdf', name: 'PDF', description: 'Documento formatado' },
-    { id: 'excel', name: 'Excel', description: 'Planilha para análise' },
-    { id: 'csv', name: 'CSV', description: 'Dados brutos' }
+    { id: 'pdf', name: 'PDF', description: localize('Documento formatado', 'Formatted document') },
+    { id: 'excel', name: 'Excel', description: localize('Planilha para análise', 'Spreadsheet for analysis') },
+    { id: 'csv', name: 'CSV', description: localize('Dados brutos', 'Raw data') }
   ];
 
   // Dados reais do backend
@@ -157,11 +158,16 @@ export const ReportsPage = () => {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       
-      toast.success(`Relatório ${format.toUpperCase()} gerado com sucesso!`);
+      toast.success(
+        localize(
+          `Relatório ${format.toUpperCase()} gerado com sucesso!`,
+          `${format.toUpperCase()} report generated successfully!`
+        )
+      );
       
     } catch (error) {
       console.error('Erro ao gerar relatório:', error);
-      toast.error('Erro ao gerar relatório');
+      toast.error(localize('Erro ao gerar relatório', 'Failed to generate report'));
     } finally {
       setIsGenerating(false);
     }
@@ -172,8 +178,12 @@ export const ReportsPage = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Relatórios Financeiros</h1>
-          <p className="text-gray-600">Gere relatórios detalhados das suas finanças</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {localize('Relatórios Financeiros', 'Financial Reports')}
+          </h1>
+          <p className="text-gray-600">
+            {localize('Gere relatórios detalhados das suas finanças', 'Generate detailed financial reports')}
+          </p>
         </div>
         <div className="flex items-center space-x-4">
           <select
@@ -191,11 +201,15 @@ export const ReportsPage = () => {
       </div>
 
       {/* Date Range Filter */}
-      <div className="bg-white p-6 rounded-lg shadow-sm border">
-        <h3 className="text-lg font-semibold mb-4">Período do Relatório</h3>
+        <div className="bg-white p-6 rounded-lg shadow-sm border">
+        <h3 className="text-lg font-semibold mb-4">
+          {localize('Período do Relatório', 'Report Period')}
+        </h3>
         <div className="flex items-center space-x-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Data Inicial</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {localize('Data Inicial', 'Start Date')}
+            </label>
             <input
               type="date"
               value={dateRange.fromDate}
@@ -204,7 +218,9 @@ export const ReportsPage = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Data Final</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {localize('Data Final', 'End Date')}
+            </label>
             <input
               type="date"
               value={dateRange.toDate}
@@ -215,7 +231,7 @@ export const ReportsPage = () => {
           <div className="flex items-end">
             <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center space-x-2">
               <Filter className="w-4 h-4" />
-              <span>Aplicar Filtros</span>
+              <span>{localize('Aplicar Filtros', 'Apply Filters')}</span>
             </button>
           </div>
         </div>
@@ -223,7 +239,9 @@ export const ReportsPage = () => {
 
       {/* Report Types */}
       <div className="bg-white p-6 rounded-lg shadow-sm border">
-        <h3 className="text-lg font-semibold mb-4">Tipos de Relatório</h3>
+        <h3 className="text-lg font-semibold mb-4">
+          {localize('Tipos de Relatório', 'Report Types')}
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {reportTypes.map((type) => {
             const Icon = type.icon;
@@ -252,7 +270,9 @@ export const ReportsPage = () => {
 
       {/* Report Preview */}
       <div className="bg-white p-6 rounded-lg shadow-sm border">
-        <h3 className="text-lg font-semibold mb-4">Prévia do Relatório</h3>
+        <h3 className="text-lg font-semibold mb-4">
+          {localize('Prévia do Relatório', 'Report Preview')}
+        </h3>
         
         {reportLoading ? (
           <div className="text-center py-8">
@@ -266,7 +286,9 @@ export const ReportsPage = () => {
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">Total de Transações</p>
+                    <p className="text-sm text-gray-600">
+                      {localize('Total de Transações', 'Total Transactions')}
+                    </p>
                     <p className="text-xl font-bold">{reportData.totalTransactions}</p>
                   </div>
                   <Receipt className="w-6 h-6 text-blue-600" />
@@ -276,7 +298,9 @@ export const ReportsPage = () => {
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">Total de Receitas</p>
+                    <p className="text-sm text-gray-600">
+                      {localize('Total de Receitas', 'Total Income')}
+                    </p>
                     <p className="text-xl font-bold text-green-600">{formatCurrency(reportData.totalIncome)}</p>
                   </div>
                   <TrendingUp className="w-6 h-6 text-green-600" />
@@ -286,7 +310,9 @@ export const ReportsPage = () => {
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">Total de Despesas</p>
+                    <p className="text-sm text-gray-600">
+                      {localize('Total de Despesas', 'Total Expenses')}
+                    </p>
                     <p className="text-xl font-bold text-red-600">{formatCurrency(reportData.totalExpenses)}</p>
                   </div>
                   <Receipt className="w-6 h-6 text-red-600" />
@@ -296,7 +322,9 @@ export const ReportsPage = () => {
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">Saldo Líquido</p>
+                    <p className="text-sm text-gray-600">
+                      {localize('Saldo Líquido', 'Net Balance')}
+                    </p>
                     <p className="text-xl font-bold text-blue-600">{formatCurrency(reportData.netAmount)}</p>
                   </div>
                   <DollarSign className="w-6 h-6 text-blue-600" />
@@ -307,7 +335,9 @@ export const ReportsPage = () => {
             {/* Categories Breakdown */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
-                <h4 className="font-medium mb-3">Gastos por Categoria</h4>
+                <h4 className="font-medium mb-3">
+                  {localize('Gastos por Categoria', 'Spending by Category')}
+                </h4>
                 <div className="space-y-2">
                   {reportData.categories.map((category, index) => (
                     <div key={index} className="flex items-center justify-between">
@@ -322,7 +352,9 @@ export const ReportsPage = () => {
               </div>
               
               <div>
-                <h4 className="font-medium mb-3">Maiores Despesas</h4>
+                <h4 className="font-medium mb-3">
+                  {localize('Maiores Despesas', 'Top Expenses')}
+                </h4>
                 <div className="space-y-2">
                   {reportData.topExpenses.map((expense, index) => (
                     <div key={index} className="flex items-center justify-between">
@@ -339,14 +371,18 @@ export const ReportsPage = () => {
           </>
         ) : (
           <div className="text-center py-8">
-            <p className="text-gray-600">Nenhum dado disponível para o período selecionado</p>
+            <p className="text-gray-600">
+              {localize('Nenhum dado disponível para o período selecionado', 'No data available for the selected period')}
+            </p>
           </div>
         )}
       </div>
 
       {/* Export Options */}
       <div className="bg-white p-6 rounded-lg shadow-sm border">
-        <h3 className="text-lg font-semibold mb-4">Exportar Relatório</h3>
+        <h3 className="text-lg font-semibold mb-4">
+          {localize('Exportar Relatório', 'Export Report')}
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {exportFormats.map((format) => (
             <button
@@ -368,7 +404,9 @@ export const ReportsPage = () => {
           <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-center space-x-2">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-              <span className="text-sm text-blue-600">Gerando relatório...</span>
+              <span className="text-sm text-blue-600">
+                {localize('Gerando relatório...', 'Generating report...')}
+              </span>
             </div>
           </div>
         )}

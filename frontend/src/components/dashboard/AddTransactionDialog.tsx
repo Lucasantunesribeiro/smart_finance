@@ -10,132 +10,118 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { useTranslation } from '@/i18n/locale-context';
 
 interface AddTransactionDialogProps {
   children: React.ReactNode;
   onSuccess?: () => void;
 }
 
-export const AddTransactionDialog = ({ 
-  children, 
-  onSuccess 
-}: AddTransactionDialogProps) => {
+const initialFormState = {
+  description: '',
+  amount: '',
+  type: '',
+  categoryId: '',
+  accountId: '',
+  transactionDate: new Date().toISOString().split('T')[0],
+};
+
+export const AddTransactionDialog = ({ children, onSuccess }: AddTransactionDialogProps) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    description: '',
-    amount: '',
-    type: undefined as string | undefined,
-    categoryId: undefined as string | undefined,
-    accountId: undefined as string | undefined,
-    transactionDate: new Date().toISOString().split('T')[0]
-  });
+  const [formData, setFormData] = useState(initialFormState);
+  const { localize } = useTranslation();
 
-  // Fetch categories for dropdown
   const { data: categoriesData } = useQuery({
     queryKey: ['categories'],
-    queryFn: () => categoryService.getCategories({
-      page: 1,
-      pageSize: 50,
-      sortBy: 'name',
-      sortOrder: 'asc'
-    }),
+    queryFn: () =>
+      categoryService.getCategories({
+        page: 1,
+        pageSize: 50,
+        sortBy: 'name',
+        sortOrder: 'asc',
+      }),
   });
 
-  // Fetch user accounts for dropdown
   const { data: accountsData } = useQuery({
     queryKey: ['accounts'],
-    queryFn: () => accountService.getAccounts({
-      page: 1,
-      pageSize: 50,
-      sortBy: 'name',
-      sortOrder: 'asc'
-    }),
+    queryFn: () =>
+      accountService.getAccounts({
+        page: 1,
+        pageSize: 50,
+        sortBy: 'name',
+        sortOrder: 'asc',
+      }),
   });
 
   const categories = categoriesData?.items || [];
   const accounts = accountsData?.items || [];
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const resetForm = () => {
+    setFormData(initialFormState);
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setLoading(true);
 
     try {
-      // Validação antes de criar os dados da transação
-      console.log('=== PRE-SEND VALIDATION ===');
-      console.log('Form data before processing:', formData);
-      
-      // Validar campos obrigatórios
-      const errors = [];
+      const errors: string[] = [];
+
       if (!formData.description.trim()) {
-        errors.push('Descrição é obrigatória');
+        errors.push(localize('Descrição é obrigatória', 'Description is required'));
       }
       if (!formData.amount || parseFloat(formData.amount) <= 0) {
-        errors.push('Valor deve ser maior que zero');
+        errors.push(localize('Valor deve ser maior que zero', 'Amount must be greater than zero'));
       }
       if (!formData.type) {
-        errors.push('Tipo de transação é obrigatório');
+        errors.push(localize('Tipo de transação é obrigatório', 'Transaction type is required'));
       }
       if (!formData.categoryId) {
-        errors.push('Categoria é obrigatória');
+        errors.push(localize('Categoria é obrigatória', 'Category is required'));
       }
-      
+
       if (errors.length > 0) {
-        console.error('❌ Validation errors:', errors);
-        toast.error(`Erros de validação: ${errors.join(', ')}`);
+        toast.error(
+          localize(
+            `Erros de validação: ${errors.join(', ')}`,
+            `Validation errors: ${errors.join(', ')}`
+          )
+        );
         return;
       }
 
-      // Use the selected accountId or the first available account
       const selectedAccountId = formData.accountId || (accounts.length > 0 ? accounts[0].id : '');
-      
+
       if (!selectedAccountId) {
-        toast.error('Nenhuma conta disponível. Crie uma conta primeiro.');
+        toast.error(localize('Nenhuma conta disponível. Crie uma conta primeiro.', 'No accounts available. Please create one first.'));
         return;
       }
 
-      const transactionData = {
+      await transactionService.createTransaction({
         description: formData.description.trim(),
         amount: parseFloat(formData.amount),
-        type: parseInt(formData.type),
-        categoryId: formData.categoryId, // ✅ Sempre obrigatório
-        accountId: selectedAccountId, // Use selected or first available account
+        type: parseInt(formData.type, 10),
+        categoryId: formData.categoryId,
+        accountId: selectedAccountId,
         transactionDate: formData.transactionDate,
         isRecurring: false,
-        tagNames: []
-      };
-      
-      console.log('✅ Validation passed. Transaction data:', transactionData);
-
-      await transactionService.createTransaction(transactionData);
-      
-      toast.success('Transaction created successfully!');
-      
-      // Reset form
-      setFormData({
-        description: '',
-        amount: '',
-        type: '',
-        categoryId: '',
-        accountId: '',
-        transactionDate: new Date().toISOString().split('T')[0]
+        tagNames: [],
       });
-      
+
+      toast.success(localize('Transação criada com sucesso!', 'Transaction created successfully!'));
+      resetForm();
       setOpen(false);
-      
-      // Call onSuccess callback to refresh data
-      if (onSuccess) {
-        onSuccess();
-      }
+      onSuccess?.();
     } catch (error) {
       console.error('Error creating transaction:', error);
-      toast.error('Failed to create transaction. Please try again.');
+      toast.error(localize('Erro ao criar transação. Tente novamente.', 'Failed to create transaction. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -143,27 +129,31 @@ export const AddTransactionDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add New Transaction</DialogTitle>
+          <DialogTitle>{localize('Adicionar nova transação', 'Add New Transaction')}</DialogTitle>
+          <DialogDescription>
+            {localize(
+              'Informe os dados da transação para registrá-la.',
+              'Provide the transaction details to add it to your records.'
+            )}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="description">Description *</Label>
+            <Label htmlFor="description">{localize('Descrição *', 'Description *')}</Label>
             <Input
               id="description"
               value={formData.description}
               onChange={(e) => handleInputChange('description', e.target.value)}
-              placeholder="Enter transaction description"
+              placeholder={localize('Informe a descrição', 'Enter transaction description')}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="amount">Amount *</Label>
+            <Label htmlFor="amount">{localize('Valor *', 'Amount *')}</Label>
             <Input
               id="amount"
               type="number"
@@ -177,24 +167,38 @@ export const AddTransactionDialog = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="type">Type *</Label>
-            <Select value={formData.type || undefined} onValueChange={(value) => handleInputChange('type', value)} required>
+            <Label htmlFor="type">{localize('Tipo *', 'Type *')}</Label>
+            <Select
+              value={formData.type}
+              onValueChange={(value) => handleInputChange('type', value)}
+              required
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Select transaction type" />
+                <SelectValue placeholder={localize('Selecione o tipo', 'Select transaction type')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={TransactionType.Expense.toString()}>Expense</SelectItem>
-                <SelectItem value={TransactionType.Income.toString()}>Income</SelectItem>
-                <SelectItem value={TransactionType.Transfer.toString()}>Transfer</SelectItem>
+                <SelectItem value={TransactionType.Expense.toString()}>
+                  {localize('Despesa', 'Expense')}
+                </SelectItem>
+                <SelectItem value={TransactionType.Income.toString()}>
+                  {localize('Receita', 'Income')}
+                </SelectItem>
+                <SelectItem value={TransactionType.Transfer.toString()}>
+                  {localize('Transferência', 'Transfer')}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="category">Category *</Label>
-            <Select value={formData.categoryId || undefined} onValueChange={(value) => handleInputChange('categoryId', value)} required>
+            <Label htmlFor="category">{localize('Categoria *', 'Category *')}</Label>
+            <Select
+              value={formData.categoryId}
+              onValueChange={(value) => handleInputChange('categoryId', value)}
+              required
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Select category (required)" />
+                <SelectValue placeholder={localize('Selecione a categoria', 'Select category (required)')} />
               </SelectTrigger>
               <SelectContent>
                 {categories.length > 0 ? (
@@ -206,9 +210,9 @@ export const AddTransactionDialog = ({
                 ) : (
                   <>
                     <SelectItem value="11111111-1111-1111-1111-111111111001">🍽️ Alimentação</SelectItem>
-                    <SelectItem value="11111111-1111-1111-1111-111111111002">🚗 Transporte</SelectItem>
-                    <SelectItem value="11111111-1111-1111-1111-111111111003">🎬 Lazer</SelectItem>
-                    <SelectItem value="11111111-1111-1111-1111-111111111004">💰 Salário</SelectItem>
+                    <SelectItem value="11111111-1111-1111-1111-111111111002">🚌 Transporte</SelectItem>
+                    <SelectItem value="11111111-1111-1111-1111-111111111003">🎮 Lazer</SelectItem>
+                    <SelectItem value="11111111-1111-1111-1111-111111111004">🪙 Salário</SelectItem>
                     <SelectItem value="11111111-1111-1111-1111-111111111005">📦 Outros</SelectItem>
                   </>
                 )}
@@ -217,32 +221,46 @@ export const AddTransactionDialog = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="accountId">Account</Label>
-            <Select value={formData.accountId || undefined} onValueChange={(value) => handleInputChange('accountId', value)}>
+            <Label htmlFor="accountId">{localize('Conta', 'Account')}</Label>
+            <Select
+              value={formData.accountId}
+              onValueChange={(value) => handleInputChange('accountId', value)}
+            >
               <SelectTrigger>
-                <SelectValue placeholder={accounts.length > 0 ? "Select account (optional)" : "No accounts available"} />
+                <SelectValue
+                  placeholder={
+                    accounts.length > 0
+                      ? localize('Selecione a conta (opcional)', 'Select account (optional)')
+                      : localize('Nenhuma conta disponível', 'No accounts available')
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
                 {accounts.length > 0 ? (
-                  accounts.map((account: { id: string; name: string; type: number }) => (
+                  accounts.map((account: { id: string; name: string }) => (
                     <SelectItem key={account.id} value={account.id}>
                       {account.name}
                     </SelectItem>
                   ))
                 ) : (
-                  <SelectItem value="no-accounts" disabled>No accounts available</SelectItem>
+                  <SelectItem value="no-accounts" disabled>
+                    {localize('Nenhuma conta disponível', 'No accounts available')}
+                  </SelectItem>
                 )}
               </SelectContent>
             </Select>
             {accounts.length === 0 && (
               <p className="text-sm text-amber-600">
-                ⚠️ No accounts found. Please create an account first.
+                {localize(
+                  '⚠️ Nenhuma conta encontrada. Crie uma conta primeiro.',
+                  '⚠️ No accounts found. Please create an account first.'
+                )}
               </p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="transactionDate">Date</Label>
+            <Label htmlFor="transactionDate">{localize('Data', 'Date')}</Label>
             <Input
               id="transactionDate"
               type="date"
@@ -253,10 +271,10 @@ export const AddTransactionDialog = ({
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
+              {localize('Cancelar', 'Cancel')}
             </Button>
             <Button type="submit" disabled={loading || accounts.length === 0}>
-              {loading ? 'Creating...' : 'Create Transaction'}
+              {loading ? localize('Criando...', 'Creating...') : localize('Criar transação', 'Create Transaction')}
             </Button>
           </div>
         </form>

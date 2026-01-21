@@ -1,291 +1,63 @@
-name: Deploy SmartFinance to AWS EC2
+name: Deploy SmartFinance to ECS
 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
     inputs:
-      force_deploy:
-        description: 'Force deployment even if no changes'
+      run_migrations:
+        description: "Run database migrations"
         required: false
         default: false
         type: boolean
 
+permissions:
+  contents: read
+  id-token: write
+
 env:
-  AWS_REGION: us-east-1
-  PROJECT_NAME: smartfinance
+  AWS_REGION: sa-east-1
+  CLUSTER_NAME: smartfinance-prod-cluster
+  SERVICE_FRONTEND: smartfinance-prod-frontend
+  SERVICE_BACKEND: smartfinance-prod-backend
+  TASK_BACKEND: smartfinance-prod-backend
 
 jobs:
   deploy:
-    name: Deploy to Production
     runs-on: ubuntu-latest
-    
     steps:
-    - name: 📥 Checkout Code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - uses: actions/checkout@v4
 
-    - name: 🔧 Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: |
-          frontend/package-lock.json
-          microservice/package-lock.json
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
-    - name: 🔧 Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x'
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
 
-    - name: 🔍 Validate Docker Compose Configuration
-      run: |
-        echo "🔍 Validating production Docker Compose configuration..."
-        if [ ! -f "docker-compose.prod.yml" ]; then
-          echo "❌ docker-compose.prod.yml not found!"
-          exit 1
-        fi
-        
-        # Validate Docker Compose syntax
-        docker-compose -f docker-compose.prod.yml config > /dev/null
-        echo "✅ Docker Compose configuration is valid"
+      - name: Build and push frontend image
+        run: |
+          docker build -t ${{ secrets.ECR_FRONTEND_URI }}:latest ./frontend
+          docker push ${{ secrets.ECR_FRONTEND_URI }}:latest
 
-    - name: 🏗️ Build and Test Frontend
-      run: |
-        echo "🏗️ Building and testing frontend..."
-        cd frontend
-        npm ci
-        npm run build
-        npm run lint
-        echo "✅ Frontend build completed"
+      - name: Build and push backend image
+        run: |
+          docker build -t ${{ secrets.ECR_BACKEND_URI }}:latest ./microservice
+          docker push ${{ secrets.ECR_BACKEND_URI }}:latest
 
-    - name: 🏗️ Build and Test Backend
-      run: |
-        echo "🏗️ Building and testing backend..."
-        cd backend
-        dotnet restore
-        dotnet build --configuration Release --no-restore
-        dotnet test --configuration Release --no-build --verbosity normal
-        echo "✅ Backend build completed"
+      - name: Run migrations (optional)
+        if: ${{ inputs.run_migrations }}
+        run: |
+          aws ecs run-task \
+            --cluster ${{ env.CLUSTER_NAME }} \
+            --launch-type FARGATE \
+            --task-definition ${{ env.TASK_BACKEND }} \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ secrets.ECS_PRIVATE_SUBNETS }}],securityGroups=[${{ secrets.ECS_SECURITY_GROUP }}],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"backend","command":["node","db/migrate.js"]}]}'
 
-    - name: 🏗️ Build and Test Payment Service
-      run: |
-        echo "🏗️ Building and testing payment service..."
-        cd microservice
-        npm ci
-        npm run build
-        npm run lint
-        npm run test
-        echo "✅ Payment service build completed"
-
-    - name: 🔐 Configure SSH
-      run: |
-        echo "🔐 Setting up SSH configuration..."
-        mkdir -p ~/.ssh
-        echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
-        echo "✅ SSH configuration completed"
-      env:
-        EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-        EC2_HOST: ${{ secrets.EC2_HOST }}
-
-    - name: 🚀 Deploy to EC2
-      run: |
-        echo "🚀 Starting deployment to EC2..."
-        
-        # Create deployment package
-        echo "📦 Creating deployment package..."
-        tar --exclude='.git' \
-            --exclude='node_modules' \
-            --exclude='.next' \
-            --exclude='bin' \
-            --exclude='obj' \
-            --exclude='*.log' \
-            --exclude='.backup' \
-            -czf smartfinance-deploy.tar.gz .
-        
-        # Copy deployment package to EC2
-        echo "📤 Uploading deployment package..."
-        scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
-            smartfinance-deploy.tar.gz \
-            ubuntu@${{ secrets.EC2_HOST }}:/tmp/
-        
-        # Execute deployment on EC2
-        echo "🔧 Executing deployment on EC2..."
-        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-          set -e
-          
-          echo "🏁 Starting deployment on EC2 instance..."
-          
-          # Navigate to application directory
-          cd /opt/smartfinance
-          
-          # Backup current deployment
-          if [ -d "current" ]; then
-            echo "💾 Creating backup of current deployment..."
-            sudo rm -rf backup || true
-            sudo mv current backup || true
-          fi
-          
-          # Extract new deployment
-          echo "📦 Extracting new deployment..."
-          sudo mkdir -p current
-          cd current
-          sudo tar -xzf /tmp/smartfinance-deploy.tar.gz
-          sudo chown -R ubuntu:ubuntu .
-          
-          # Setup environment variables
-          echo "⚙️ Setting up environment variables..."
-          if [ ! -f ".env.production" ]; then
-            echo "🔧 Creating production environment file..."
-            cat > .env.production << 'ENVEOF'
-NODE_ENV=production
-ASPNETCORE_ENVIRONMENT=Production
-SQL_PASSWORD=${{ secrets.SQL_PASSWORD }}
-MONGO_PASSWORD=${{ secrets.MONGO_PASSWORD }}
-REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
-JWT_SECRET=${{ secrets.JWT_SECRET }}
-JWT_ISSUER=SmartFinance
-JWT_AUDIENCE=SmartFinanceUsers
-NEXT_PUBLIC_API_URL=/api/v1
-NEXT_PUBLIC_SIGNALR_URL=/financehub
-NEXT_PUBLIC_PAYMENT_SERVICE_URL=/payment
-ConnectionStrings__DefaultConnection=Data Source=smartfinance.db
-GF_SECURITY_ADMIN_PASSWORD=${{ secrets.GRAFANA_PASSWORD }}
-ENVEOF
-          fi
-          
-          # Load environment variables
-          export $(cat .env.production | grep -v '^#' | xargs)
-          
-          # Stop existing services gracefully
-          echo "🛑 Stopping existing services..."
-          docker-compose -f docker-compose.prod.yml down --timeout 30 || true
-          
-          # Clean up Docker resources
-          echo "🧹 Cleaning up Docker resources..."
-          docker system prune -f || true
-          
-          # Build and start services
-          echo "🔨 Building and starting services..."
-          docker-compose -f docker-compose.prod.yml up -d --build
-          
-          # Wait for services to start
-          echo "⏳ Waiting for services to initialize..."
-          sleep 45
-          
-          # Health check with retries
-          echo "🏥 Performing health checks..."
-          max_retries=12
-          retry_count=0
-          
-          while [ $retry_count -lt $max_retries ]; do
-            if curl -f -s http://localhost/health > /dev/null; then
-              echo "✅ Application is healthy!"
-              break
-            else
-              retry_count=$((retry_count + 1))
-              echo "⏳ Health check attempt $retry_count/$max_retries failed, retrying in 10 seconds..."
-              sleep 10
-            fi
-          done
-          
-          if [ $retry_count -eq $max_retries ]; then
-            echo "❌ Health check failed after $max_retries attempts"
-            echo "📊 Service status:"
-            docker-compose -f docker-compose.prod.yml ps
-            echo "📝 Service logs:"
-            docker-compose -f docker-compose.prod.yml logs --tail=50
-            exit 1
-          fi
-          
-          # Final status check
-          echo "📊 Final deployment status:"
-          docker-compose -f docker-compose.prod.yml ps
-          
-          # Clean up deployment package
-          rm -f /tmp/smartfinance-deploy.tar.gz
-          
-          echo "🎉 Deployment completed successfully!"
-          echo "🌐 Application is available at: http://${{ secrets.EC2_HOST }}"
-        EOF
-
-    - name: 🧪 Post-Deployment Testing
-      run: |
-        echo "🧪 Running post-deployment tests..."
-        
-        # Wait a bit more for services to fully stabilize
-        sleep 30
-        
-        # Test main application endpoint
-        echo "🔍 Testing main application..."
-        if curl -f -s "http://${{ secrets.EC2_HOST }}/health"; then
-          echo "✅ Main application health check passed"
-        else
-          echo "❌ Main application health check failed"
-          exit 1
-        fi
-        
-        # Test API endpoint
-        echo "🔍 Testing API endpoint..."
-        if curl -f -s "http://${{ secrets.EC2_HOST }}/api/v1/health"; then
-          echo "✅ API health check passed"
-        else
-          echo "❌ API health check failed"
-          exit 1
-        fi
-        
-        # Test payment service endpoint
-        echo "🔍 Testing payment service..."
-        if curl -f -s "http://${{ secrets.EC2_HOST }}/payment/health"; then
-          echo "✅ Payment service health check passed"
-        else
-          echo "❌ Payment service health check failed"
-          exit 1
-        fi
-        
-        echo "🎉 All post-deployment tests passed!"
-
-    - name: 📊 Deployment Summary
-      if: always()
-      run: |
-        echo "📊 Deployment Summary"
-        echo "===================="
-        echo "🎯 Target: ${{ secrets.EC2_HOST }}"
-        echo "🌐 Application URL: http://${{ secrets.EC2_HOST }}"
-        echo "📅 Deployed at: $(date)"
-        echo "🔗 Commit: ${{ github.sha }}"
-        echo "👤 Triggered by: ${{ github.actor }}"
-        
-        if [ "${{ job.status }}" == "success" ]; then
-          echo "✅ Deployment Status: SUCCESS"
-        else
-          echo "❌ Deployment Status: FAILED"
-        fi
-
-    - name: 🚨 Rollback on Failure
-      if: failure()
-      run: |
-        echo "🚨 Deployment failed, attempting rollback..."
-        
-        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-          cd /opt/smartfinance
-          
-          if [ -d "backup" ]; then
-            echo "🔄 Rolling back to previous version..."
-            sudo rm -rf current || true
-            sudo mv backup current || true
-            cd current
-            
-            # Restart services with backup version
-            docker-compose -f docker-compose.prod.yml down || true
-            docker-compose -f docker-compose.prod.yml up -d
-            
-            echo "✅ Rollback completed"
-          else
-            echo "❌ No backup found for rollback"
-          fi
-        EOF
+      - name: Force new deployment
+        run: |
+          aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_BACKEND }} --force-new-deployment
+          aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_FRONTEND }} --force-new-deployment

@@ -7,7 +7,8 @@ public class PasswordHasher : IPasswordHasher
 {
     private const int SaltSize = 16;
     private const int KeySize = 32;
-    private const int Iterations = 10000;
+    private const int CurrentIterations = 600000;
+    private const int LegacyIterations = 10000;
 
     public string HashPassword(string password)
     {
@@ -15,7 +16,7 @@ public class PasswordHasher : IPasswordHasher
         var salt = new byte[SaltSize];
         rng.GetBytes(salt);
 
-        using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Iterations, HashAlgorithmName.SHA256);
+        using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, CurrentIterations, HashAlgorithmName.SHA256);
         var key = pbkdf2.GetBytes(KeySize);
 
         var hashBytes = new byte[SaltSize + KeySize];
@@ -33,22 +34,32 @@ public class PasswordHasher : IPasswordHasher
             var salt = new byte[SaltSize];
             Array.Copy(hashBytes, 0, salt, 0, SaltSize);
 
-            using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Iterations, HashAlgorithmName.SHA256);
-            var key = pbkdf2.GetBytes(KeySize);
-
-            for (int i = 0; i < KeySize; i++)
+            if (VerifyWithIterations(password, salt, hashBytes, CurrentIterations))
             {
-                if (hashBytes[i + SaltSize] != key[i])
-                {
-                    return false;
-                }
+                return true;
             }
 
-            return true;
+            return VerifyWithIterations(password, salt, hashBytes, LegacyIterations);
         }
         catch
         {
             return false;
         }
+    }
+
+    private static bool VerifyWithIterations(string password, byte[] salt, byte[] hashBytes, int iterations)
+    {
+        using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, iterations, HashAlgorithmName.SHA256);
+        var key = pbkdf2.GetBytes(KeySize);
+
+        for (int i = 0; i < KeySize; i++)
+        {
+            if (hashBytes[i + SaltSize] != key[i])
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { AuthProvider } from '@/hooks/useAuth';
 import { SignalRProvider } from '@/hooks/useSignalR';
 import { Toaster } from '@/components/ui/sonner';
+import { LocaleProvider } from '@/i18n/locale-context';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -71,12 +72,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
         enableSystem
         disableTransitionOnChange
       >
-        <AuthProvider>
-          <SignalRProvider>
-            {children}
-            <Toaster />
-          </SignalRProvider>
-        </AuthProvider>
+        <LocaleProvider>
+          <AuthProvider>
+            <SignalRProvider>
+              {children}
+              <Toaster />
+            </SignalRProvider>
+          </AuthProvider>
+        </LocaleProvider>
         <ReactQueryDevtools initialIsOpen={false} />
       </ThemeProvider>
     </QueryClientProvider>

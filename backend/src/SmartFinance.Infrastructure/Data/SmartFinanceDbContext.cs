@@ -311,6 +311,7 @@ public class SmartFinanceDbContext : DbContext
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         UpdateAuditFields();
+        NormalizeDateTimes();
         return await base.SaveChangesAsync(cancellationToken);
     }
 
@@ -328,6 +329,30 @@ public class SmartFinanceDbContext : DbContext
             else if (entry.State == EntityState.Modified)
             {
                 entry.Entity.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+    }
+
+    private void NormalizeDateTimes()
+    {
+        foreach (var entry in ChangeTracker.Entries())
+        {
+            foreach (var property in entry.Properties)
+            {
+                if (property.Metadata.ClrType == typeof(DateTime))
+                {
+                    if (property.CurrentValue is DateTime dateTime && dateTime.Kind == DateTimeKind.Unspecified)
+                    {
+                        property.CurrentValue = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
+                    }
+                }
+                else if (property.Metadata.ClrType == typeof(DateTime?))
+                {
+                    if (property.CurrentValue is DateTime dateTime && dateTime.Kind == DateTimeKind.Unspecified)
+                    {
+                        property.CurrentValue = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
+                    }
+                }
             }
         }
     }

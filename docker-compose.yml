@@ -1,0 +1,58 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: smartfinance
+      POSTGRES_USER: smartfinance
+      POSTGRES_PASSWORD: smartfinance
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+
+  microservice:
+    build:
+      context: ./microservice
+      dockerfile: Dockerfile
+    depends_on:
+      - postgres
+    ports:
+      - '5000:5000'
+    environment:
+      NODE_ENV: development
+      PORT: '5000'
+      DATABASE_URL: postgres://smartfinance:smartfinance@postgres:5432/smartfinance
+      DB_SSL: 'false'
+      ALLOWED_ORIGINS: http://localhost:3000
+      JWT_ISSUER: SmartFinance
+      JWT_AUDIENCE: SmartFinanceUsers
+      JWT_ACCESS_SECRET: supersecretaccesskey1234567890
+      JWT_REFRESH_SECRET: supersecretrefreshkey1234567890
+      JWT_SECRET_KEY: supersecretrawkey1234567890
+      AUTO_MIGRATE: 'true'
+      SEED_DEMO_DATA: 'true'
+      TRUST_PROXY: 'true'
+      COOKIE_SECURE: 'false'
+      COOKIE_SAMESITE: Lax
+    command: ["node", "server.js"]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      - microservice
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
+      NEXT_PUBLIC_SIGNALR_URL: http://localhost:5000/financehub
+      NEXT_PUBLIC_PAYMENT_API_URL: http://localhost:5000/payment
+    command: ["npm", "run", "dev"]
+
+volumes:
+  postgres_data:

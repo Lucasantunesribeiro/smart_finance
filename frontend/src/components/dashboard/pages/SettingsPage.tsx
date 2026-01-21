@@ -14,6 +14,7 @@ import {
   Save
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from '@/i18n/locale-context';
 
 export const SettingsPage = () => {
   const { user } = useAuth();
@@ -43,24 +44,48 @@ export const SettingsPage = () => {
     dateFormat: 'DD/MM/YYYY',
     numberFormat: '1.234,56'
   });
+  const { localize } = useTranslation();
 
   const tabs = [
-    { id: 'profile', name: 'Perfil', icon: User },
-    { id: 'notifications', name: 'Notificações', icon: Bell },
-    { id: 'preferences', name: 'Preferências', icon: Palette },
-    { id: 'security', name: 'Segurança', icon: Shield },
-    { id: 'data', name: 'Dados', icon: Download }
+    { id: 'profile', name: localize('Perfil', 'Profile'), icon: User },
+    { id: 'notifications', name: localize('Notificações', 'Notifications'), icon: Bell },
+    { id: 'preferences', name: localize('Preferências', 'Preferences'), icon: Palette },
+    { id: 'security', name: localize('Segurança', 'Security'), icon: Shield },
+    { id: 'data', name: localize('Dados', 'Data'), icon: Download }
   ];
+
+  const notificationLabelMap = {
+    emailNotifications: {
+      label: localize('Notificações por Email', 'Email Notifications'),
+      description: localize('Receber notificações via email', 'Receive notifications via email'),
+    },
+    pushNotifications: {
+      label: localize('Notificações Push', 'Push Notifications'),
+      description: localize('Receber notificações push no navegador', 'Receive push notifications in your browser'),
+    },
+    budgetAlerts: {
+      label: localize('Alertas de Orçamento', 'Budget Alerts'),
+      description: localize('Ser notificado quando exceder orçamentos', 'Be notified when budgets are exceeded'),
+    },
+    transactionAlerts: {
+      label: localize('Alertas de Transação', 'Transaction Alerts'),
+      description: localize('Ser notificado sobre novas transações', 'Receive alerts for new transactions'),
+    },
+    monthlyReports: {
+      label: localize('Relatórios Mensais', 'Monthly Reports'),
+      description: localize('Receber relatórios mensais por email', 'Get monthly reports via email'),
+    },
+  };
 
   const handleSaveProfile = async () => {
     setIsLoading(true);
     try {
       // Chama API real para atualizar perfil
       await api.put('/users/profile', profileData);
-      toast.success('Perfil atualizado com sucesso!');
+      toast.success(localize('Perfil atualizado com sucesso!', 'Profile updated successfully!'));
     } catch (error) {
       console.error('Erro ao atualizar perfil:', error);
-      toast.error('Erro ao atualizar perfil');
+      toast.error(localize('Erro ao atualizar perfil', 'Failed to update profile'));
     } finally {
       setIsLoading(false);
     }
@@ -70,10 +95,10 @@ export const SettingsPage = () => {
     setIsLoading(true);
     try {
       await api.put('/users/notifications', notificationSettings);
-      toast.success('Configurações de notificação salvas!');
+      toast.success(localize('Configurações de notificação salvas!', 'Notification settings saved!'));
     } catch (error) {
       console.error('Erro ao salvar configurações:', error);
-      toast.error('Erro ao salvar configurações');
+      toast.error(localize('Erro ao salvar configurações', 'Failed to save notification settings'));
     } finally {
       setIsLoading(false);
     }
@@ -83,10 +108,10 @@ export const SettingsPage = () => {
     setIsLoading(true);
     try {
       await api.put('/users/preferences', preferences);
-      toast.success('Preferências salvas!');
+      toast.success(localize('Preferências salvas!', 'Preferences saved!'));
     } catch (error) {
       console.error('Erro ao salvar preferências:', error);
-      toast.error('Erro ao salvar preferências');
+      toast.error(localize('Erro ao salvar preferências', 'Failed to save preferences'));
     } finally {
       setIsLoading(false);
     }
@@ -95,7 +120,9 @@ export const SettingsPage = () => {
   const renderProfileTab = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold mb-4">Informações Pessoais</h3>
+        <h3 className="text-lg font-semibold mb-4">
+          {localize('Informações Pessoais', 'Personal Information')}
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
@@ -154,7 +181,11 @@ export const SettingsPage = () => {
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
         >
           <Save className="w-4 h-4" />
-          <span>{isLoading ? 'Salvando...' : 'Salvar Perfil'}</span>
+          <span>
+            {isLoading
+              ? localize('Salvando...', 'Saving...')
+              : localize('Salvar Perfil', 'Save Profile')}
+          </span>
         </button>
       </div>
     </div>
@@ -163,24 +194,20 @@ export const SettingsPage = () => {
   const renderNotificationsTab = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold mb-4">Configurações de Notificação</h3>
+        <h3 className="text-lg font-semibold mb-4">
+          {localize('Configurações de Notificação', 'Notification Settings')}
+        </h3>
         <div className="space-y-4">
-          {Object.entries(notificationSettings).map(([key, value]) => (
-            <div key={key} className="flex items-center justify-between">
+          {Object.entries(notificationSettings).map(([key, value]) => {
+            const text = notificationLabelMap[key as keyof typeof notificationLabelMap];
+            return (
+              <div key={key} className="flex items-center justify-between">
               <div>
                 <label className="font-medium text-gray-700">
-                  {key === 'emailNotifications' && 'Notificações por Email'}
-                  {key === 'pushNotifications' && 'Notificações Push'}
-                  {key === 'budgetAlerts' && 'Alertas de Orçamento'}
-                  {key === 'transactionAlerts' && 'Alertas de Transação'}
-                  {key === 'monthlyReports' && 'Relatórios Mensais'}
+                  {text?.label ?? key}
                 </label>
                 <p className="text-sm text-gray-600">
-                  {key === 'emailNotifications' && 'Receber notificações via email'}
-                  {key === 'pushNotifications' && 'Receber notificações push no navegador'}
-                  {key === 'budgetAlerts' && 'Ser notificado quando exceder orçamentos'}
-                  {key === 'transactionAlerts' && 'Ser notificado sobre novas transações'}
-                  {key === 'monthlyReports' && 'Receber relatórios mensais por email'}
+                  {text?.description ?? ''}
                 </p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
@@ -193,7 +220,8 @@ export const SettingsPage = () => {
                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
               </label>
             </div>
-          ))}
+          );
+          })}
         </div>
       </div>
       
@@ -204,7 +232,11 @@ export const SettingsPage = () => {
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
         >
           <Save className="w-4 h-4" />
-          <span>{isLoading ? 'Salvando...' : 'Salvar Configurações'}</span>
+          <span>
+            {isLoading
+              ? localize('Salvando...', 'Saving...')
+              : localize('Salvar Configurações', 'Save Settings')}
+          </span>
         </button>
       </div>
     </div>
@@ -213,7 +245,9 @@ export const SettingsPage = () => {
   const renderPreferencesTab = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold mb-4">Preferências do Sistema</h3>
+        <h3 className="text-lg font-semibold mb-4">
+          {localize('Preferências do Sistema', 'System Preferences')}
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Idioma</label>
@@ -276,7 +310,11 @@ export const SettingsPage = () => {
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
         >
           <Save className="w-4 h-4" />
-          <span>{isLoading ? 'Salvando...' : 'Salvar Preferências'}</span>
+          <span>
+            {isLoading
+              ? localize('Salvando...', 'Saving...')
+              : localize('Salvar Preferências', 'Save Preferences')}
+          </span>
         </button>
       </div>
     </div>
@@ -285,13 +323,17 @@ export const SettingsPage = () => {
   const renderSecurityTab = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold mb-4">Segurança da Conta</h3>
+        <h3 className="text-lg font-semibold mb-4">
+          {localize('Segurança da Conta', 'Account Security')}
+        </h3>
         <div className="space-y-4">
           <div className="p-4 border rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="font-medium">Alterar Senha</h4>
-                <p className="text-sm text-gray-600">Última alteração: há 30 dias</p>
+                <h4 className="font-medium">{localize('Alterar Senha', 'Change Password')}</h4>
+                <p className="text-sm text-gray-600">
+                  {localize('Última alteração: há 30 dias', 'Last change: 30 days ago')}
+                </p>
               </div>
               <button className="text-blue-600 hover:text-blue-800">
                 <Lock className="w-5 h-5" />
@@ -302,11 +344,15 @@ export const SettingsPage = () => {
           <div className="p-4 border rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="font-medium">Autenticação de Dois Fatores</h4>
-                <p className="text-sm text-gray-600">Adicione uma camada extra de segurança</p>
+                <h4 className="font-medium">
+                  {localize('Autenticação de Dois Fatores', 'Two-Factor Authentication')}
+                </h4>
+                <p className="text-sm text-gray-600">
+                  {localize('Adicione uma camada extra de segurança', 'Add an extra layer of security')}
+                </p>
               </div>
               <button className="bg-blue-600 text-white px-3 py-1 rounded text-sm">
-                Ativar
+                {localize('Ativar', 'Enable')}
               </button>
             </div>
           </div>
@@ -314,11 +360,13 @@ export const SettingsPage = () => {
           <div className="p-4 border rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="font-medium">Sessões Ativas</h4>
-                <p className="text-sm text-gray-600">Gerencie seus logins ativos</p>
+                <h4 className="font-medium">{localize('Sessões Ativas', 'Active Sessions')}</h4>
+                <p className="text-sm text-gray-600">
+                  {localize('Gerencie seus logins ativos', 'Manage your active logins')}
+                </p>
               </div>
               <button className="text-blue-600 hover:text-blue-800">
-                Ver Sessões
+                {localize('Ver Sessões', 'View Sessions')}
               </button>
             </div>
           </div>
@@ -339,29 +387,36 @@ export const SettingsPage = () => {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      toast.success('Dados exportados com sucesso!');
+      toast.success(localize('Dados exportados com sucesso!', 'Data exported successfully!'));
     } catch (error) {
       console.error('Erro ao exportar dados:', error);
-      toast.error('Erro ao exportar dados');
+      toast.error(localize('Erro ao exportar dados', 'Failed to export data'));
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleDeleteAccount = async () => {
-    if (!window.confirm('Tem certeza que deseja excluir sua conta? Esta ação não pode ser desfeita.')) {
+    if (
+      !window.confirm(
+        localize(
+          'Tem certeza que deseja excluir sua conta? Esta ação não pode ser desfeita.',
+          'Are you sure you want to delete your account? This cannot be undone.'
+        )
+      )
+    ) {
       return;
     }
     
     setIsLoading(true);
     try {
       await api.delete('/users/account');
-      toast.success('Conta excluída com sucesso');
+      toast.success(localize('Conta excluída com sucesso', 'Account deleted successfully'));
       // Logout automático após exclusão
       window.location.href = '/login';
     } catch (error) {
       console.error('Erro ao excluir conta:', error);
-      toast.error('Erro ao excluir conta');
+      toast.error(localize('Erro ao excluir conta', 'Failed to delete account'));
     } finally {
       setIsLoading(false);
     }
@@ -370,13 +425,17 @@ export const SettingsPage = () => {
   const renderDataTab = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold mb-4">Gerenciamento de Dados</h3>
+        <h3 className="text-lg font-semibold mb-4">
+          {localize('Gerenciamento de Dados', 'Data Management')}
+        </h3>
         <div className="space-y-4">
           <div className="p-4 border rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="font-medium">Exportar Dados</h4>
-                <p className="text-sm text-gray-600">Baixe todos os seus dados em formato JSON</p>
+                <h4 className="font-medium">{localize('Exportar Dados', 'Export Data')}</h4>
+                <p className="text-sm text-gray-600">
+                  {localize('Baixe todos os seus dados em formato JSON', 'Download all your data in JSON format')}
+                </p>
               </div>
               <button 
                 onClick={handleExportData}
@@ -384,7 +443,11 @@ export const SettingsPage = () => {
                 className="bg-blue-600 text-white px-3 py-1 rounded text-sm flex items-center space-x-1 disabled:opacity-50"
               >
                 <Download className="w-4 h-4" />
-                <span>{isLoading ? 'Exportando...' : 'Exportar'}</span>
+                <span>
+                  {isLoading
+                    ? localize('Exportando...', 'Exporting...')
+                    : localize('Exportar', 'Export')}
+                </span>
               </button>
             </div>
           </div>
@@ -392,8 +455,10 @@ export const SettingsPage = () => {
           <div className="p-4 border border-red-200 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="font-medium text-red-600">Excluir Conta</h4>
-                <p className="text-sm text-gray-600">Remova permanentemente sua conta e todos os dados</p>
+                <h4 className="font-medium text-red-600">{localize('Excluir Conta', 'Delete Account')}</h4>
+                <p className="text-sm text-gray-600">
+                  {localize('Remova permanentemente sua conta e todos os dados', 'Permanently remove your account and all data')}
+                </p>
               </div>
               <button 
                 onClick={handleDeleteAccount}
@@ -401,7 +466,9 @@ export const SettingsPage = () => {
                 className="bg-red-600 text-white px-3 py-1 rounded text-sm flex items-center space-x-1 disabled:opacity-50"
               >
                 <Trash2 className="w-4 h-4" />
-                <span>{isLoading ? 'Excluindo...' : 'Excluir'}</span>
+                <span>
+                  {isLoading ? localize('Excluindo...', 'Deleting...') : localize('Excluir', 'Delete')}
+                </span>
               </button>
             </div>
           </div>
@@ -414,8 +481,15 @@ export const SettingsPage = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Configurações</h1>
-        <p className="text-gray-600">Gerencie suas preferências e configurações da conta</p>
+        <h1 className="text-2xl font-bold text-gray-900">
+          {localize('Configurações', 'Settings')}
+        </h1>
+        <p className="text-gray-600">
+          {localize(
+            'Gerencie suas preferências e configurações da conta',
+            'Manage your account preferences and settings'
+          )}
+        </p>
       </div>
 
       {/* Tabs */}

@@ -1,0 +1,18 @@
+project_name       = "smartfinance"
+environment        = "prod"
+aws_region         = "sa-east-1"
+
+github_repo   = "OWNER/REPO"
+github_branch = "main"
+
+enable_cloudfront   = true
+acm_certificate_arn = ""
+
+db_backup_retention_days = 7
+db_backup_window          = "03:00-06:00"
+db_maintenance_window     = "sun:06:00-sun:07:00"
+db_multi_az               = true
+db_apply_immediately      = false
+
+enable_guardduty   = true
+enable_securityhub = true

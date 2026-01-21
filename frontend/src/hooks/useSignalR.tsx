@@ -21,14 +21,9 @@ export function SignalRProvider({ children }: { children: ReactNode }) {
     // Temporariamente desabilitado para evitar erro 401
     if (false && isAuthenticated && user) {
       const hubUrl = process.env.NEXT_PUBLIC_SIGNALR_URL || 'http://localhost:5000/financehub';
-      const accessToken = localStorage.getItem('accessToken');
-
-      if (!accessToken) return;
 
       const newConnection = new HubConnectionBuilder()
-        .withUrl(hubUrl, {
-          accessTokenFactory: () => accessToken || '',
-        })
+        .withUrl(hubUrl)
         .withAutomaticReconnect()
         .configureLogging(LogLevel.Information)
         .build();

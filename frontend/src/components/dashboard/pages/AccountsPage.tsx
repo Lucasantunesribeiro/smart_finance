@@ -1,19 +1,44 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { accountService } from '@/services/accountService';
-import { AccountType } from '@/types/account';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { accountService, CreateAccountDto, UpdateAccountDto } from '@/services/accountService';
+import { AccountType, Account } from '@/types/account';
 import { formatCurrency } from '@/lib/utils';
-import { Plus, CreditCard, DollarSign, Wallet, TrendingUp, TrendingDown, Edit, Trash2 } from 'lucide-react';
+import {
+  Plus,
+  CreditCard,
+  DollarSign,
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+  Edit,
+  Trash2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { toast } from 'sonner';
+import { useTranslation } from '@/i18n/locale-context';
+import { extractErrorMessage } from '@/lib/errorHelpers';
 
 export const AccountsPage = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const { localize } = useTranslation();
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    name: '',
+    type: AccountType.Checking,
+    balance: 0,
+    description: '',
+    isActive: true
+  });
+
+  const queryClient = useQueryClient();
 
   // Conectar com API real usando React Query
   const { data: accountsData, isLoading, error } = useQuery({
@@ -36,6 +61,91 @@ export const AccountsPage = () => {
   });
 
   const accounts = accountsData?.items || [];
+
+  // Mutations
+  const createAccountMutation = useMutation({
+    mutationFn: (data: CreateAccountDto) => accountService.createAccount(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['account-balance'] });
+      toast.success(localize('Conta criada com sucesso!', 'Account created successfully!'));
+      setShowCreateModal(false);
+      resetForm();
+    },
+    onError: (error: unknown) => {
+      toast.error(extractErrorMessage(error, localize('Erro ao criar conta.', 'Error creating account')));
+    }
+  });
+
+  const updateAccountMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateAccountDto }) => 
+      accountService.updateAccount(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['account-balance'] });
+      toast.success(localize('Conta atualizada com sucesso!', 'Account updated successfully!'));
+      setShowEditModal(false);
+      setEditingAccount(null);
+      resetForm();
+    },
+    onError: (error: unknown) => {
+      toast.error(extractErrorMessage(error, localize('Erro ao atualizar conta.', 'Error updating account')));
+    }
+  });
+
+  const deleteAccountMutation = useMutation({
+    mutationFn: (id: string) => accountService.deleteAccount(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['account-balance'] });
+      toast.success(localize('Conta deletada com sucesso!', 'Account deleted successfully!'));
+    },
+    onError: (error: unknown) => {
+      toast.error(extractErrorMessage(error, localize('Erro ao deletar conta.', 'Error deleting account')));
+    }
+  });
+
+  // Helper functions
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      type: AccountType.Checking,
+      balance: 0,
+      description: '',
+      isActive: true
+    });
+  };
+
+  const handleEdit = (account: Account) => {
+    setEditingAccount(account);
+    setFormData({
+      name: account.name,
+      type: account.type,
+      balance: account.balance,
+      description: account.description || '',
+      isActive: account.isActive
+    });
+    setShowEditModal(true);
+  };
+
+  const handleDelete = (account: Account) => {
+    if (window.confirm(localize('Tem certeza que deseja excluir a conta?', 'Are you sure you want to delete this account?'))) {
+      deleteAccountMutation.mutate(account.id);
+    }
+  };
+
+  const handleSubmit = () => {
+    if (!formData.name.trim()) {
+      toast.error('Account name is required');
+      return;
+    }
+
+    if (editingAccount) {
+      updateAccountMutation.mutate({ id: editingAccount.id, data: formData });
+    } else {
+      createAccountMutation.mutate(formData);
+    }
+  };
 
   const getAccountIcon = (type: AccountType) => {
     switch (type) {
@@ -60,18 +170,167 @@ export const AccountsPage = () => {
     return 'text-gray-600';
   };
 
-  const handleDeleteAccount = async (accountId: string) => {
-    if (confirm('Are you sure you want to delete this account?')) {
-      try {
-        await accountService.deleteAccount(accountId);
-        toast.success('Account deleted successfully');
-        // Refresh data
-        window.location.reload();
-      } catch (error) {
-        toast.error('Failed to delete account');
-      }
-    }
-  };
+  const createAccountModal = showCreateModal ? (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <h2 className="text-xl font-bold mb-4">Create New Account</h2>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Account Name
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter account name"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Account Type
+            </label>
+            <select
+              value={formData.type}
+              onChange={(e) => setFormData(prev => ({ ...prev, type: parseInt(e.target.value) as AccountType }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value={AccountType.Checking}>Checking</option>
+              <option value={AccountType.Savings}>Savings</option>
+              <option value={AccountType.Credit}>Credit</option>
+              <option value={AccountType.Investment}>Investment</option>
+              <option value={AccountType.Loan}>Loan</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Initial Balance
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.balance}
+              onChange={(e) => setFormData(prev => ({ ...prev, balance: parseFloat(e.target.value) || 0 }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="0.00"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Description
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Account description (optional)"
+              rows={3}
+            />
+          </div>
+        </div>
+        <div className="flex justify-end space-x-2 mt-6">
+          <Button variant="outline" onClick={() => setShowCreateModal(false)}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSubmit}
+            disabled={createAccountMutation.isPending}
+          >
+            {createAccountMutation.isPending ? 'Creating...' : 'Create Account'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  const editAccountModal = showEditModal ? (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <h2 className="text-xl font-bold mb-4">Edit Account</h2>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Account Name
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter account name"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Account Type
+            </label>
+            <select
+              value={formData.type}
+              onChange={(e) => setFormData(prev => ({ ...prev, type: parseInt(e.target.value) as AccountType }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value={AccountType.Checking}>Checking</option>
+              <option value={AccountType.Savings}>Savings</option>
+              <option value={AccountType.Credit}>Credit</option>
+              <option value={AccountType.Investment}>Investment</option>
+              <option value={AccountType.Loan}>Loan</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Balance
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.balance}
+              onChange={(e) => setFormData(prev => ({ ...prev, balance: parseFloat(e.target.value) || 0 }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="0.00"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Description
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Account description (optional)"
+              rows={3}
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="isActive"
+              checked={formData.isActive}
+              onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label htmlFor="isActive" className="text-sm text-gray-700">
+              Account is active
+            </label>
+          </div>
+        </div>
+        <div className="flex justify-end space-x-2 mt-6">
+          <Button variant="outline" onClick={() => setShowEditModal(false)}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSubmit}
+            disabled={updateAccountMutation.isPending}
+          >
+            {updateAccountMutation.isPending ? 'Updating...' : 'Update Account'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+
 
   if (isLoading) {
     return (
@@ -98,26 +357,29 @@ export const AccountsPage = () => {
 
   if (error || accounts.length === 0) {
     return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
-            <p className="text-gray-600">Manage your financial accounts</p>
+      <>
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
+              <p className="text-gray-600">Manage your financial accounts</p>
+            </div>
+            <Button onClick={() => setShowCreateModal(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Account
+            </Button>
           </div>
-          <Button onClick={() => setShowCreateModal(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Account
-          </Button>
-        </div>
 
-        <EmptyState
-          icon={<Wallet className="h-16 w-16" />}
-          title="No accounts found"
-          description="Get started by adding your first financial account to track your money."
-          actionLabel="Add Your First Account"
-          onAction={() => setShowCreateModal(true)}
-        />
-      </div>
+          <EmptyState
+            icon={<Wallet className="h-16 w-16" />}
+            title="No accounts found"
+            description="Get started by adding your first financial account to track your money."
+            actionLabel="Add Your First Account"
+            onAction={() => setShowCreateModal(true)}
+          />
+        </div>
+        {createAccountModal}
+      </>
     );
   }
 
@@ -236,14 +498,20 @@ export const AccountsPage = () => {
                   </div>
                   
                   <div className="flex items-center space-x-2">
-                    <Button variant="ghost" size="sm">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleEdit(account)}
+                      title="Edit account"
+                    >
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      onClick={() => handleDeleteAccount(account.id)}
+                      onClick={() => handleDelete(account)}
                       className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      title="Delete account"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -255,26 +523,8 @@ export const AccountsPage = () => {
         ))}
       </div>
 
-      {/* Create Account Modal would go here */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Add New Account</h2>
-            <p className="text-gray-600 mb-4">Create account functionality coming soon...</p>
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setShowCreateModal(false)}>
-                Cancel
-              </Button>
-              <Button onClick={() => {
-                setShowCreateModal(false);
-                toast.info('Account creation coming soon!');
-              }}>
-                Create Account
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {createAccountModal}
+      {editAccountModal}
     </div>
   );
 };

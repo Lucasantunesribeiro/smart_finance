@@ -1,10 +1,11 @@
 using MediatR;
 using SmartFinance.Application.Common.DTOs;
+using SmartFinance.Application.Common.Utils;
+using SmartFinance.Domain.Entities;
 using SmartFinance.Domain.Enums;
 using SmartFinance.Domain.Interfaces;
-using SmartFinance.Domain.Entities;
-using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace SmartFinance.Application.Features.Transactions.Commands
 {
@@ -54,8 +55,7 @@ namespace SmartFinance.Application.Features.Transactions.Commands
                 return null;
             }
 
-            // Verificar se a transação pertence ao usuário
-            if (transaction.Account?.UserId != request.UserId)
+            if (transaction.UserId != request.UserId)
             {
                 _logger.LogWarning("Transaction {TransactionId} does not belong to user: {UserId}", request.Id, request.UserId);
                 return null;
@@ -72,7 +72,7 @@ namespace SmartFinance.Application.Features.Transactions.Commands
                 transaction.Description = request.Description;
 
             if (request.TransactionDate.HasValue)
-                transaction.TransactionDate = request.TransactionDate.Value;
+                transaction.TransactionDate = DateTimeUtils.NormalizeToUtc(request.TransactionDate.Value);
 
             if (request.Type.HasValue)
                 transaction.Type = request.Type.Value;

@@ -42,7 +42,7 @@ namespace SmartFinance.Application.Features.Transactions.Queries
                 }
 
                 // Verificar se a transação pertence ao usuário
-                if (transaction.Account?.UserId != request.UserId)
+                if (transaction.UserId != request.UserId)
                 {
                     _logger.LogWarning("Transaction {TransactionId} does not belong to user: {UserId}", request.Id, request.UserId);
                     return null;

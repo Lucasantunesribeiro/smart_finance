@@ -20,6 +20,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { useTranslation } from '@/i18n/locale-context';
 
 // Loading skeleton components
 const MetricCardSkeleton = () => (
@@ -67,6 +68,7 @@ export const AnalyticsPage = () => {
     fromDate: new Date(new Date().getFullYear(), new Date().getMonth() - 11, 1).toISOString().split('T')[0],
     toDate: new Date().toISOString().split('T')[0]
   });
+  const { localize } = useTranslation();
 
   // Conectando com backend real
   const { 
@@ -190,8 +192,12 @@ export const AnalyticsPage = () => {
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h1>
-            <p className="text-gray-600">Análise detalhada das suas finanças</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {localize('Painel de Analytics', 'Analytics Dashboard')}
+          </h1>
+          <p className="text-gray-600">
+            {localize('Análise detalhada das suas finanças', 'Detailed insights into your finances')}
+          </p>
           </div>
           <div className="flex items-center space-x-4">
             <Skeleton className="h-10 w-32" />
@@ -224,28 +230,38 @@ export const AnalyticsPage = () => {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h1>
-            <p className="text-gray-600">Análise detalhada das suas finanças</p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {localize('Painel de Analytics', 'Analytics Dashboard')}
+          </h1>
+          <p className="text-gray-600">
+            {localize('Análise detalhada das suas finanças', 'Detailed insights into your finances')}
+          </p>
+        </div>
           <Button onClick={handleRefresh} variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
-            Tentar Novamente
+            {localize('Tentar Novamente', 'Try Again')}
           </Button>
         </div>
 
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Ocorreu um erro ao carregar os dados de analytics. Verifique sua conexão e tente novamente.
+            {localize(
+              'Ocorreu um erro ao carregar os dados de analytics. Verifique sua conexão e tente novamente.',
+              'Failed to load analytics data. Check your connection and try again.'
+            )}
           </AlertDescription>
         </Alert>
 
         <EmptyState
           icon={<BarChart3 className="h-16 w-16" />}
-          title="Erro ao carregar dados"
-          description="Não foi possível carregar as informações de analytics. Tente novamente em alguns instantes."
-          actionLabel="Recarregar Dados"
+          title={localize('Erro ao carregar dados', 'Failed to load data')}
+          description={localize(
+            'Não foi possível carregar as informações de analytics. Tente novamente em alguns instantes.',
+            'Unable to load analytics information. Please try again shortly.'
+          )}
+          actionLabel={localize('Recarregar Dados', 'Reload Data')}
           onAction={handleRefresh}
           className="min-h-[400px]"
         />
@@ -267,8 +283,11 @@ export const AnalyticsPage = () => {
 
         <EmptyState
           icon={<BarChart3 className="h-16 w-16" />}
-          title="Sem dados para análise"
-          description="Adicione transações e categorias para visualizar análises detalhadas das suas finanças"
+          title={localize('Sem dados para análise', 'No data available for analysis')}
+          description={localize(
+            'Adicione transações e categorias para visualizar análises detalhadas das suas finanças',
+            'Add transactions and categories to view detailed analytics'
+          )}
           className="min-h-[400px]"
         />
       </div>
@@ -280,8 +299,12 @@ export const AnalyticsPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h1>
-          <p className="text-gray-600">Análise detalhada das suas finanças</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {localize('Painel de Analytics', 'Analytics Dashboard')}
+          </h1>
+          <p className="text-gray-600">
+            {localize('Análise detalhada das suas finanças', 'Detailed insights into your finances')}
+          </p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
           <Select value={selectedPeriod} onValueChange={(value: 'daily' | 'weekly' | 'monthly' | 'yearly') => setSelectedPeriod(value)}>
@@ -289,10 +312,10 @@ export const AnalyticsPage = () => {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="daily">Diário</SelectItem>
-              <SelectItem value="weekly">Semanal</SelectItem>
-              <SelectItem value="monthly">Mensal</SelectItem>
-              <SelectItem value="yearly">Anual</SelectItem>
+              <SelectItem value="daily">{localize('Diário', 'Daily')}</SelectItem>
+              <SelectItem value="weekly">{localize('Semanal', 'Weekly')}</SelectItem>
+              <SelectItem value="monthly">{localize('Mensal', 'Monthly')}</SelectItem>
+              <SelectItem value="yearly">{localize('Anual', 'Yearly')}</SelectItem>
             </SelectContent>
           </Select>
           <div className="flex gap-2">
@@ -319,7 +342,7 @@ export const AnalyticsPage = () => {
           <AlertDescription>
             Alguns dados podem estar incompletos devido a erros de conexão. 
             <Button variant="link" onClick={handleRefresh} className="p-0 h-auto ml-1">
-              Tentar recarregar
+              {localize('Tentar recarregar', 'Try to reload')}
             </Button>
           </AlertDescription>
         </Alert>
@@ -331,12 +354,17 @@ export const AnalyticsPage = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Média Mensal de Receita</p>
+                <p className="text-sm text-gray-600">
+                  {localize('Média Mensal de Receita', 'Average Monthly Income')}
+                </p>
                 <p className="text-2xl font-bold text-green-600">
                   {formatCurrency(analyticsData.reduce((sum, d) => sum + d.income, 0) / analyticsData.length || 0)}
                 </p>
                 <p className="text-sm text-green-600 mt-1">
-                  {analyticsData.length} período{analyticsData.length !== 1 ? 's' : ''} analisado{analyticsData.length !== 1 ? 's' : ''}
+                  {localize(
+                    `${analyticsData.length} período${analyticsData.length !== 1 ? 's' : ''} analisado${analyticsData.length !== 1 ? 's' : ''}`,
+                    `${analyticsData.length} period${analyticsData.length !== 1 ? 's' : ''} analyzed`
+                  )}
                 </p>
               </div>
               <div className="bg-green-100 p-3 rounded-full">
@@ -350,12 +378,17 @@ export const AnalyticsPage = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Média Mensal de Despesas</p>
+                <p className="text-sm text-gray-600">
+                  {localize('Média Mensal de Despesas', 'Average Monthly Expenses')}
+                </p>
                 <p className="text-2xl font-bold text-red-600">
                   {formatCurrency(analyticsData.reduce((sum, d) => sum + d.expense, 0) / analyticsData.length || 0)}
                 </p>
                 <p className="text-sm text-red-600 mt-1">
-                  {analyticsData.length} período{analyticsData.length !== 1 ? 's' : ''} analisado{analyticsData.length !== 1 ? 's' : ''}
+                  {localize(
+                    `${analyticsData.length} período${analyticsData.length !== 1 ? 's' : ''} analisado${analyticsData.length !== 1 ? 's' : ''}`,
+                    `${analyticsData.length} period${analyticsData.length !== 1 ? 's' : ''} analyzed`
+                  )}
                 </p>
               </div>
               <div className="bg-red-100 p-3 rounded-full">
@@ -369,12 +402,14 @@ export const AnalyticsPage = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Saldo Líquido Médio</p>
+                <p className="text-sm text-gray-600">
+                  {localize('Saldo Líquido Médio', 'Average Net Balance')}
+                </p>
                 <p className="text-2xl font-bold text-blue-600">
                   {formatCurrency(analyticsData.reduce((sum, d) => sum + d.net, 0) / analyticsData.length || 0)}
                 </p>
                 <p className="text-sm text-blue-600 mt-1">
-                  Diferença entre receitas e despesas
+                  {localize('Diferença entre receitas e despesas', 'Difference between income and expenses')}
                 </p>
               </div>
               <div className="bg-blue-100 p-3 rounded-full">
@@ -390,7 +425,9 @@ export const AnalyticsPage = () => {
         {/* Category Spending */}
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader>
-            <CardTitle>Gastos por Categoria</CardTitle>
+            <CardTitle>
+              {localize('Gastos por Categoria', 'Spending by Category')}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {expenseCategories.length > 0 ? (
@@ -429,8 +466,13 @@ export const AnalyticsPage = () => {
               </div>
             ) : (
               <div className="text-center py-8 text-gray-500">
-                <p>Nenhum dado de categoria disponível</p>
-                <p className="text-sm mt-1">Adicione transações com categorias para ver esta análise</p>
+                <p>{localize('Nenhum dado de categoria disponível', 'No category data available')}</p>
+                <p className="text-sm mt-1">
+                  {localize(
+                    'Adicione transações com categorias para ver esta análise',
+                    'Add categorized transactions to view this analysis'
+                  )}
+                </p>
               </div>
             )}
           </CardContent>
@@ -439,7 +481,9 @@ export const AnalyticsPage = () => {
         {/* Trends */}
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader>
-            <CardTitle>Tendências Financeiras</CardTitle>
+            <CardTitle>
+              {localize('Tendências Financeiras', 'Financial Trends')}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {trendData.length > 0 ? (
@@ -468,8 +512,13 @@ export const AnalyticsPage = () => {
               </div>
             ) : (
               <div className="text-center py-8 text-gray-500">
-                <p>Nenhuma tendência disponível</p>
-                <p className="text-sm mt-1">Dados insuficientes para análise de tendências</p>
+                <p>{localize('Nenhuma tendência disponível', 'No trends available')}</p>
+                <p className="text-sm mt-1">
+                  {localize(
+                    'Dados insuficientes para análise de tendências',
+                    'Not enough data to analyze trends'
+                  )}
+                </p>
               </div>
             )}
           </CardContent>

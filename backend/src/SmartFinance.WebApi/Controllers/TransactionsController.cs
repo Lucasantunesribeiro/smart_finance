@@ -3,8 +3,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using MediatR;
 using SmartFinance.Application.Common.DTOs;
+using SmartFinance.Application.Common.Utils;
 using SmartFinance.Application.Features.Transactions.Commands;
 using SmartFinance.Application.Features.Transactions.Queries;
+using SmartFinance.Domain.Enums;
 using System.Linq;
 
 namespace SmartFinance.WebApi.Controllers;
@@ -317,11 +319,16 @@ public class TransactionsController : ControllerBase
                 return Unauthorized();
             }
 
+            var normalizedFrom = NormalizeToUtc(fromDate ?? DateTime.UtcNow.AddMonths(-1));
+            var normalizedTo = NormalizeToUtc(toDate ?? DateTime.UtcNow);
+
             var query = new GetTransactionSummaryQuery
             {
                 UserId = userId,
-                FromDate = fromDate ?? DateTime.UtcNow.AddMonths(-1),
-                ToDate = toDate ?? DateTime.UtcNow
+                FromDate = normalizedFrom,
+                ToDate = normalizedTo,
+                StartDate = normalizedFrom,
+                EndDate = normalizedTo
             };
 
             var result = await _mediator.Send(query);
@@ -332,5 +339,43 @@ public class TransactionsController : ControllerBase
             _logger.LogError(ex, "Error getting transaction summary");
             return StatusCode(500, new { message = "An error occurred while retrieving the transaction summary" });
         }
+    }
+
+    [HttpPost("{id}/close")]
+    public async Task<IActionResult> CloseTransaction(Guid id)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var command = new UpdateTransactionCommand
+            {
+                Id = id,
+                UserId = userId,
+                Status = TransactionStatus.Completed
+            };
+
+            var result = await _mediator.Send(command);
+            if (result == null)
+            {
+                return NotFound();
+            }
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error closing transaction {TransactionId}", id);
+            return StatusCode(500, new { message = "An error occurred while closing the transaction" });
+        }
+    }
+
+    private static DateTime NormalizeToUtc(DateTime value)
+    {
+        return DateTimeUtils.NormalizeToUtc(value);
     }
 }
