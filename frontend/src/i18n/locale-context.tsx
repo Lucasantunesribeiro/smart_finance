@@ -27,7 +27,7 @@ export const LocaleProvider = ({ children }: { children: React.ReactNode }) => {
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(STORAGE_KEY, locale);
     }
-  }, [locale, setLocale, toggleLocale]);
+  }, [locale]);
 
   const setLocale = useCallback((next: Locale) => {
     setLocaleState(next);
