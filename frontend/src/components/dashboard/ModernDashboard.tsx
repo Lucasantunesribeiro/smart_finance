@@ -23,8 +23,9 @@ import {
   TrendingDown,
   CreditCard,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
 } from 'lucide-react';
+import { useTranslation } from '@/i18n/locale-context';
 
 interface StatsCardProps {
   title: string;
@@ -64,6 +65,9 @@ const StatsCard = ({ title, value, change, changeType, icon }: StatsCardProps) =
 export const ModernDashboard = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  const subtitle = t('dashboardSubtitle').replace('{name}', user?.firstName ?? 'Admin');
 
   // Fetch data with proper error handling and defaults
   const { data: transactionSummary = { 
@@ -120,23 +124,41 @@ export const ModernDashboard = () => {
 
   const getTransactionTypeText = (type: number) => {
     switch (type) {
-      case 0: return 'Income';
-      case 1: return 'Expense';
-      case 2: return 'Transfer';
-      default: return 'Unknown';
+      case 0:
+        return t('transactionTypeIncome');
+      case 1:
+        return t('transactionTypeExpense');
+      case 2:
+        return t('transactionTypeTransfer');
+      default:
+        return t('transactionTypeUnknown');
     }
   };
 
   const getStatusBadge = (status: number) => {
     switch (status) {
       case 1:
-        return <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">Completed</Badge>;
+        return (
+          <Badge
+            variant="default"
+            className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+          >
+            {t('statusCompleted')}
+          </Badge>
+        );
       case 0:
-        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">Pending</Badge>;
+        return (
+          <Badge
+            variant="secondary"
+            className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+          >
+            {t('statusPending')}
+          </Badge>
+        );
       case 2:
-        return <Badge variant="destructive">Failed</Badge>;
+        return <Badge variant="destructive">{t('statusFailed')}</Badge>;
       default:
-        return <Badge variant="outline">Unknown</Badge>;
+        return <Badge variant="outline">{t('statusUnknown')}</Badge>;
     }
   };
 
@@ -151,41 +173,39 @@ export const ModernDashboard = () => {
       {/* Header Section */}
       <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-muted-foreground">
-            Welcome back, {user?.firstName}! Here&apos;s your financial overview.
-          </p>
+          <h2 className="text-3xl font-bold tracking-tight">{t('dashboardTitle')}</h2>
+          <p className="text-muted-foreground">{subtitle}</p>
         </div>
         <AddTransactionDialog onSuccess={refreshData}>
-          <Button>Add Transaction</Button>
+          <Button>{t('addTransaction')}</Button>
         </AddTransactionDialog>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
-          title="Net Amount"
+          title={t('netAmount')}
           value={formatCurrency(transactionSummary.netAmount)}
           change=""
           changeType="neutral"
           icon={<DollarSign className="h-4 w-4" />}
         />
         <StatsCard
-          title="Total Income"
+          title={t('totalIncome')}
           value={formatCurrency(transactionSummary.totalIncome)}
           change=""
           changeType="neutral"
           icon={<TrendingUp className="h-4 w-4" />}
         />
         <StatsCard
-          title="Total Expenses"
+          title={t('totalExpenses')}
           value={formatCurrency(transactionSummary.totalExpense)}
           change=""
           changeType="neutral"
           icon={<TrendingDown className="h-4 w-4" />}
         />
         <StatsCard
-          title="Transactions"
+          title={t('transactions')}
           value={transactionSummary.transactionCount.toString()}
           change=""
           changeType="neutral"
@@ -198,8 +218,8 @@ export const ModernDashboard = () => {
         {/* Recent Transactions */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Recent Transactions</CardTitle>
-            <CardDescription>Latest financial activity</CardDescription>
+            <CardTitle>{t('recentTransactionsTitle')}</CardTitle>
+            <CardDescription>{t('recentTransactionsDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
             {transactionsLoading ? (
@@ -239,7 +259,7 @@ export const ModernDashboard = () => {
                 ))}
                 {recentTransactions.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
-                    No recent transactions found
+                    {t('recentTransactionsEmpty')}
                   </div>
                 )}
               </div>
@@ -250,8 +270,8 @@ export const ModernDashboard = () => {
         {/* Budget Overview */}
         <Card>
           <CardHeader>
-            <CardTitle>Budget Overview</CardTitle>
-            <CardDescription>Current month progress</CardDescription>
+            <CardTitle>{t('budgetOverviewTitle')}</CardTitle>
+            <CardDescription>{t('budgetOverviewDescription')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {budgets.map((budget) => (
@@ -271,7 +291,7 @@ export const ModernDashboard = () => {
             ))}
             {budgets.length === 0 && (
               <div className="text-center py-8 text-muted-foreground text-sm">
-                No active budgets found
+                {t('noActiveBudgets')}
               </div>
             )}
           </CardContent>
