@@ -1,68 +1,39 @@
-# 🚀 SmartFinance — Plataforma de Gestão Financeira Empresarial
+# SmartFinance
 
-SmartFinance é uma aplicação full-stack pronta para produção com foco em segurança, observabilidade e experiência do usuário. O stack combina **Front-end Next.js**, **Back-end Node.js**, **Microservice de pagamentos**, bancos PostgreSQL/Redis e infraestrutura codificada em **Terraform** para execução na AWS.
+Aplicação full-stack multi-idioma (pt-BR / en-US) rodando no ALB público `smartfinance-prod-alb-1713518371.sa-east-1.elb.amazonaws.com`. O Next.js serve o dashboard e o Node.js + microserviço cuidam da API (JWT com access + refresh, CSRF, rate limiting e validação). Toda a infraestrutura (ECR, ECS, VPC, RDS, WAF, CloudFront, Secrets Manager) está codificada em `infrastructure/terraform-enterprise`.
 
-## 🌐 Deploy ativo
-- **Frontend público:** http://smartfinance-prod-alb-1713518371.sa-east-1.elb.amazonaws.com/
-- **API (internal):** https://smartfinance-prod-alb-1713518371.sa-east-1.elb.amazonaws.com/api/v1
-- **Health check:** https://smartfinance-prod-alb-1713518371.sa-east-1.elb.amazonaws.com/health
+## Deploy público
+- Frontend: `http://smartfinance-prod-alb-1713518371.sa-east-1.elb.amazonaws.com/`
+- API: `https://smartfinance-prod-alb-1713518371.sa-east-1.elb.amazonaws.com/api/v1`
+- Health: `https://smartfinance-prod-alb-1713518371.sa-east-1.elb.amazonaws.com/health`
 
-## 🔒 Arquitetura e segurança
-1. **Frontend Next.js 14** com internacionalização pt-br/en e toggle global para alternar idiomas.
-2. **Back-end Node.js (API principal)** rodando em Express + PM2, com JWT (access+refresh), rate limiting e CORS restrito ao domínio acima.
-3. **Microservice de pagamentos** (Node.js + PostgreSQL + Redis) isolado para evitar regressões do backend .NET antigo.
-4. **Infraestrutura Terraform + ECS + ALB + CloudFront + RDS + Secrets Manager** gerenciando container registry, IAM, Vault, WAF e monitoramento.
-5. **Logs e observabilidade** por padrão com CloudWatch, Alertas do WAF e dashboard de métricas.
+## Como rodar localmente
+1. `docker compose build` e `docker compose up`
+2. Acesse:
+   - Dashboard: `http://localhost:3000`
+   - API: `http://localhost:5000/api/v1`
+   - Documentação: `http://localhost:5000/docs`
+3. Microserviço isolado: `cd microservice && npm install && npm run dev`
 
-## ✅ Funcionalidades principais
-- Autenticação e refresh tokens seguros.
-- Dashboard financeiro em tempo real com gráficos.
-- Administração completa de contas, categorias, orçamentos e transações.
-- APIs REST e WebSocket (SignalR compatível) protegidas por tokens.
-- Formulários validados com mensagens claras e gerenciamento de erros estruturados.
-- Deploy com PM2, Nginx e monitoramento ativo (uptime, latência, custo).
+## Variáveis essenciais
+Copie `.env.example` e defina `JWT_SECRET_KEY`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `ALLOWED_ORIGINS` (URL do ALB) e credenciais PostgreSQL/Redis. O pipeline injeta automaticamente os valores sensíveis em Secrets Manager e IAM.
 
-## 🧭 Como rodar localmente (sem .NET legado)
-1. `docker compose build`
-2. `docker compose up`
-3. Acesse:
-   - Frontend: http://localhost:3000
-   - API /docs: http://localhost:5000/docs
-   - Health backend: http://localhost:5000/health
-4. Para rodar microsserviço separado: `cd microservice && npm install && npm run dev`.
+## Testes rápidos
+- Frontend: `npm run lint`, `npm run type-check`, `npm run build`
+- Microservice: `npm run lint`, `npm test`
 
-O ambiente usa apenas **Next.js**, **Node.js** e **PostgreSQL** para evitar duplicidade de backends. As migrações estão em `microservice/db/migrations`.
+## Estrutura mais relevante
+- `frontend/`: Next.js + i18n toggle pt-br ↔ en + componentes shadcn/ui
+- `microservice/`: API Node.js com validação, rate limit e migrations PostgreSQL
+- `infrastructure/terraform-enterprise/`: Terraform para ALB/ECS/RDS/WAF/Secrets
+- `docs/`: runbooks operacionais e validações de segurança
 
-## ⚙️ Variáveis de ambiente essenciais
-Copie `.env.example` e preencha valores sensíveis (JWT_SECRET_KEY, JWT_ACCESS_SECRET etc). O pipeline já injeta valores seguros para `ALLOWED_ORIGINS`, cookies e rate limits.
+## Status atual
+- ✅ Produção online com ALB/ECS/CloudFront
+- ✅ Internacionalização ativa com toggle pt-br ↔ en
+- ✅ Monitoramento via CloudWatch e alertas WAF
 
-## 📦 Docker e deploy
-- `docker compose up` — sobe frontend, backend e microserviço.
-- `docker compose down` — interrrupe os serviços limpos.
-- Jenkins/CI: o trabalho `frontend` na Action roda lint, type-check e build; `backend` executa apenas checagem `node --check`.
-
-## 🧪 Testes e qualidade
-- Frontend: `npm run lint`, `npm run type-check`, `npm run build`.
-- Microservice: `npm run lint`, `npm test`.
-- CodeQL e Trivy garantem compliance.
-
-## 📜 Conteúdo adicional
-- `docs/` — planos executivos, verificações de segurança e runbooks.
-- `infrastructure/terraform-enterprise` — provisionamento AWS.
-- `microservice/` — serviço Node.js com rate limiting, validação e logs.
-
-## ✨ Status atual
-- ✅ Produção online (ALB + ECS + CloudFront).
-- ✅ Internacionalização com toggle pt-br ↔ en.
-- ✅ Segurança OWASP alinhada (JWT, env vars, rate limit, CORS).
-- ✅ Monitoramento e alertas em CloudWatch/WAF.
-
-## 🔁 Próximos passos
-1. Confirmar secrets no Secrets Manager (JWT, DB, S3).
-2. Atualizar pipeline com deploy automatizado (Terraform + ECR + ECS).
-3. Validar transações e budgets via rotas `/api/v1/transactions` e `/api/v1/budgets`.
-
-## 👤 Contatos & suporte
-- **Autor:** Lucas Antunes Ribeiro — lucas@smartfinance.com
-- **GitHub:** https://github.com/lucasantunesribeiro
-- **LinkedIn:** https://linkedin.com/in/lucasantunesribeiro
+## Próximos passos
+1. Garantir que Secrets Managers mantenham JWT/DB/S3 atualizados
+2. Validar budgets/transactions diretamente em `/api/v1`
+3. Testar trocas de idioma e relatórios em produção após o próximo deploy

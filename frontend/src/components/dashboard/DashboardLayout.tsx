@@ -104,7 +104,6 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                 </nav>
               </SheetContent>
             </Sheet>
-            <h1 className="ml-2 text-lg font-semibold lg:ml-0">{t('sheetTitle')}</h1>
           </div>
 
           <div className="flex items-center space-x-2">
@@ -146,9 +145,9 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       </header>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:block fixed left-0 top-16 z-40 w-64 h-[calc(100vh-4rem)] border-r bg-background">
-        <ScrollArea className="h-full p-4">
-          <nav className="space-y-2">
+      <aside className="hidden lg:block fixed left-0 top-20 z-40 w-64 h-[calc(100vh-5rem)] border-r bg-background">
+        <ScrollArea className="h-full p-4 pt-6">
+          <nav className="space-y-2 mt-2">
             {sidebarItems.map((item) => (
               <Button
                 key={item.labelKey}
@@ -165,7 +164,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       </aside>
 
       {/* Main Content */}
-      <main className="lg:ml-64 pt-10 pb-8">
+      <main className="lg:ml-64 pt-20 pb-8">
         <div className="px-4 lg:px-8">
           {children}
         </div>

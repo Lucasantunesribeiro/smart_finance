@@ -25,37 +25,38 @@ export const ReportsPage = () => {
     toDate: new Date().toISOString().split('T')[0]
   });
   const [isGenerating, setIsGenerating] = useState(false);
-  const { localize } = useTranslation();
+  const [reportError, setReportError] = useState<string | null>(null);
+  const { localize, t } = useTranslation();
 
   const reportTypes = [
     {
       id: 'monthly',
-      name: localize('Relatório Mensal', 'Monthly Report'),
-      description: localize('Resumo completo das transações do mês', 'Full summary of monthly transactions'),
+      name: t('reportTypeMonthlyName'),
+      description: t('reportTypeMonthlyDescription'),
       icon: Calendar
     },
     {
       id: 'category',
-      name: localize('Relatório por Categoria', 'Category Report'),
-      description: localize('Análise de gastos por categoria', 'Analysis of spending by category'),
+      name: t('reportTypeCategoryName'),
+      description: t('reportTypeCategoryDescription'),
       icon: PieChart
     },
     {
       id: 'cashflow',
-      name: localize('Fluxo de Caixa', 'Cash Flow'),
-      description: localize('Análise do fluxo de entrada e saída', 'Insight into incoming and outgoing cash'),
+      name: t('reportTypeCashflowName'),
+      description: t('reportTypeCashflowDescription'),
       icon: TrendingUp
     },
     {
       id: 'budget',
-      name: localize('Relatório de Orçamento', 'Budget Report'),
-      description: localize('Comparação entre orçado e realizado', 'Comparison of budgeted versus actuals'),
+      name: t('reportTypeBudgetName'),
+      description: t('reportTypeBudgetDescription'),
       icon: BarChart3
     },
     {
       id: 'annual',
-      name: localize('Relatório Anual', 'Annual Report'),
-      description: localize('Resumo completo do ano', 'Yearly summary'),
+      name: t('reportTypeAnnualName'),
+      description: t('reportTypeAnnualDescription'),
       icon: FileText
     }
   ];
@@ -72,66 +73,73 @@ export const ReportsPage = () => {
     retry: false, // TEMPORARY: Stop infinite retry loop on 500 errors
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      // Buscar resumo das transações
-      const summary = await transactionService.getTransactionSummary(
-        dateRange.fromDate, 
-        dateRange.toDate
-      );
-      
-      // Buscar transações para análise
-      const transactions = await transactionService.getTransactions({
-        fromDate: dateRange.fromDate,
-        toDate: dateRange.toDate,
-        page: 1,
-        pageSize: 100, // or appropriate number
-        sortBy: 'transactionDate', // or appropriate field
-        sortOrder: 'desc' // or 'asc'
-      });
-      
-      // Calcular estatísticas
-      const totalTransactions = transactions.totalCount;
-      const totalIncome = summary.totalIncome;
-      const totalExpenses = summary.totalExpense;
-      const netAmount = summary.netAmount;
-      
-      // Agrupar por categoria
-      const categoryMap = new Map();
-      transactions.items.forEach(transaction => {
-        const categoryName = transaction.categoryName || 'Outros';
-        if (!categoryMap.has(categoryName)) {
-          categoryMap.set(categoryName, 0);
-        }
-        categoryMap.set(categoryName, categoryMap.get(categoryName) + transaction.amount);
-      });
-      
-      const categories = Array.from(categoryMap.entries())
-        .map(([name, amount]) => ({
-          name,
-          amount,
-          percentage: totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0
-        }))
-        .sort((a, b) => b.amount - a.amount)
-        .slice(0, 5);
-      
-      // Maiores despesas
-      const topExpenses = transactions.items
-        .filter(t => t.type === 1) // Expense
-        .sort((a, b) => b.amount - a.amount)
-        .slice(0, 5)
-        .map(t => ({
-          description: t.description,
-          amount: t.amount,
-          date: t.transactionDate
-        }));
-      
-      return {
-        totalTransactions,
-        totalIncome,
-        totalExpenses,
-        netAmount,
-        categories,
-        topExpenses
-      };
+      try {
+        // Buscar resumo das transações
+        const summary = await transactionService.getTransactionSummary(
+          dateRange.fromDate, 
+          dateRange.toDate
+        );
+        
+        // Buscar transações para análise
+        const transactions = await transactionService.getTransactions({
+          fromDate: dateRange.fromDate,
+          toDate: dateRange.toDate,
+          page: 1,
+          pageSize: 100, // or appropriate number
+          sortBy: 'transactionDate', // or appropriate field
+          sortOrder: 'desc' // or 'asc'
+        });
+        
+        // Calcular estatísticas
+        const totalTransactions = transactions.totalCount;
+        const totalIncome = summary.totalIncome;
+        const totalExpenses = summary.totalExpense;
+        const netAmount = summary.netAmount;
+        
+        // Agrupar por categoria
+        const categoryMap = new Map();
+        transactions.items.forEach(transaction => {
+          const categoryName = transaction.categoryName || 'Outros';
+          if (!categoryMap.has(categoryName)) {
+            categoryMap.set(categoryName, 0);
+          }
+          categoryMap.set(categoryName, categoryMap.get(categoryName) + transaction.amount);
+        });
+        
+        const categories = Array.from(categoryMap.entries())
+          .map(([name, amount]) => ({
+            name,
+            amount,
+            percentage: totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0
+          }))
+          .sort((a, b) => b.amount - a.amount)
+          .slice(0, 5);
+        
+        // Maiores despesas
+        const topExpenses = transactions.items
+          .filter(t => t.type === 1) // Expense
+          .sort((a, b) => b.amount - a.amount)
+          .slice(0, 5)
+          .map(t => ({
+            description: t.description,
+            amount: t.amount,
+            date: t.transactionDate
+          }));
+        
+        setReportError(null);
+        return {
+          totalTransactions,
+          totalIncome,
+          totalExpenses,
+          netAmount,
+          categories,
+          topExpenses
+        };
+      } catch (error) {
+        console.error('Erro ao carregar dados do relatório', error);
+        setReportError(t('reportLoadError'));
+        return null;
+      }
     }
   });
 
@@ -159,16 +167,11 @@ export const ReportsPage = () => {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       
-      toast.success(
-        localize(
-          `Relatório ${format.toUpperCase()} gerado com sucesso!`,
-          `${format.toUpperCase()} report generated successfully!`
-        )
-      );
+      toast.success(t('reportExportSuccess'));
       
     } catch (error) {
       console.error('Erro ao gerar relatório:', error);
-      toast.error(localize('Erro ao gerar relatório', 'Failed to generate report'));
+      toast.error(t('reportLoadError'));
     } finally {
       setIsGenerating(false);
     }
@@ -180,10 +183,10 @@ export const ReportsPage = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {localize('Relatórios Financeiros', 'Financial Reports')}
+            {t('reportTitle')}
           </h1>
           <p className="text-gray-600">
-            {localize('Gere relatórios detalhados das suas finanças', 'Generate detailed financial reports')}
+            {t('reportSubtitle')}
           </p>
         </div>
         <div className="flex items-center space-x-4">
@@ -204,12 +207,12 @@ export const ReportsPage = () => {
       {/* Date Range Filter */}
         <div className="bg-white p-6 rounded-lg shadow-sm border">
         <h3 className="text-lg font-semibold mb-4">
-          {localize('Período do Relatório', 'Report Period')}
+          {t('reportPeriodTitle')}
         </h3>
         <div className="flex items-center space-x-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {localize('Data Inicial', 'Start Date')}
+              {t('reportStartDate')}
             </label>
             <input
               type="date"
@@ -220,7 +223,7 @@ export const ReportsPage = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {localize('Data Final', 'End Date')}
+              {t('reportEndDate')}
             </label>
             <input
               type="date"
@@ -232,7 +235,7 @@ export const ReportsPage = () => {
           <div className="flex items-end">
             <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center space-x-2">
               <Filter className="w-4 h-4" />
-              <span>{localize('Aplicar Filtros', 'Apply Filters')}</span>
+              <span>{t('applyFilters')}</span>
             </button>
           </div>
         </div>
@@ -241,7 +244,7 @@ export const ReportsPage = () => {
       {/* Report Types */}
       <div className="bg-white p-6 rounded-lg shadow-sm border">
         <h3 className="text-lg font-semibold mb-4">
-          {localize('Tipos de Relatório', 'Report Types')}
+          {t('reportTypesTitle')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {reportTypes.map((type) => {
@@ -272,13 +275,17 @@ export const ReportsPage = () => {
       {/* Report Preview */}
       <div className="bg-white p-6 rounded-lg shadow-sm border">
         <h3 className="text-lg font-semibold mb-4">
-          {localize('Prévia do Relatório', 'Report Preview')}
+          {t('reportPreviewTitle')}
         </h3>
         
         {reportLoading ? (
           <div className="text-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-2 text-gray-600">Carregando dados do relatório...</p>
+            <p className="mt-2 text-gray-600">{t('reportLoading')}</p>
+          </div>
+        ) : reportError ? (
+          <div className="text-center py-8 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-700">{reportError}</p>
           </div>
         ) : reportData ? (
           <>
@@ -288,7 +295,7 @@ export const ReportsPage = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">
-                      {localize('Total de Transações', 'Total Transactions')}
+                      {t('reportTotalTransactions')}
                     </p>
                     <p className="text-xl font-bold">{reportData.totalTransactions}</p>
                   </div>
@@ -300,7 +307,7 @@ export const ReportsPage = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">
-                      {localize('Total de Receitas', 'Total Income')}
+                      {t('reportTotalIncome')}
                     </p>
                     <p className="text-xl font-bold text-green-600">{formatCurrency(reportData.totalIncome)}</p>
                   </div>
@@ -312,7 +319,7 @@ export const ReportsPage = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">
-                      {localize('Total de Despesas', 'Total Expenses')}
+                      {t('reportTotalExpenses')}
                     </p>
                     <p className="text-xl font-bold text-red-600">{formatCurrency(reportData.totalExpenses)}</p>
                   </div>
@@ -324,7 +331,7 @@ export const ReportsPage = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">
-                      {localize('Saldo Líquido', 'Net Balance')}
+                      {t('reportNetBalance')}
                     </p>
                     <p className="text-xl font-bold text-blue-600">{formatCurrency(reportData.netAmount)}</p>
                   </div>
@@ -337,7 +344,7 @@ export const ReportsPage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
                 <h4 className="font-medium mb-3">
-                  {localize('Gastos por Categoria', 'Spending by Category')}
+                  {t('reportCategoriesLabel')}
                 </h4>
                 <div className="space-y-2">
                   {reportData.categories.map((category, index) => (
@@ -354,7 +361,7 @@ export const ReportsPage = () => {
               
               <div>
                 <h4 className="font-medium mb-3">
-                  {localize('Maiores Despesas', 'Top Expenses')}
+                  {t('reportTopExpensesLabel')}
                 </h4>
                 <div className="space-y-2">
                   {reportData.topExpenses.map((expense, index) => (
@@ -373,7 +380,7 @@ export const ReportsPage = () => {
         ) : (
           <div className="text-center py-8">
             <p className="text-gray-600">
-              {localize('Nenhum dado disponível para o período selecionado', 'No data available for the selected period')}
+              {t('reportNoData')}
             </p>
           </div>
         )}
@@ -382,7 +389,7 @@ export const ReportsPage = () => {
       {/* Export Options */}
       <div className="bg-white p-6 rounded-lg shadow-sm border">
         <h3 className="text-lg font-semibold mb-4">
-          {localize('Exportar Relatório', 'Export Report')}
+          {t('reportExportTitle')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {exportFormats.map((format) => (
@@ -406,7 +413,7 @@ export const ReportsPage = () => {
             <div className="flex items-center space-x-2">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
               <span className="text-sm text-blue-600">
-                {localize('Gerando relatório...', 'Generating report...')}
+                {t('reportGenerating')}
               </span>
             </div>
           </div>
