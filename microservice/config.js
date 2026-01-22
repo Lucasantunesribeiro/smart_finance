@@ -20,7 +20,7 @@ function buildConfig() {
     port: parseInt(process.env.PORT || '5000', 10),
     trustProxy: process.env.TRUST_PROXY === 'true',
     bodyLimitBytes: parseInt(process.env.BODY_LIMIT_BYTES || '1048576', 10),
-    allowedOrigins: (process.env.ALLOWED_ORIGINS || 'http://smartfinance-prod-alb-1713518371.sa-east-1.elb.amazonaws.com/').split(',').map((o) => o.trim()),
+    allowedOrigins: (process.env.ALLOWED_ORIGINS || 'https://<YOUR_ALB_HOSTNAME>/').split(',').map((o) => o.trim()),
     databaseUrl: requireEnv('DATABASE_URL', process.env.DATABASE_URL || '', isProd),
     dbSsl: process.env.DB_SSL === 'true',
     autoMigrate: process.env.AUTO_MIGRATE === 'true',

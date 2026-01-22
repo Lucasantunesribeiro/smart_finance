@@ -22,7 +22,10 @@ export const authMiddleware = (
       throw createError('Access denied. No token provided.', 401);
     }
 
-    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw createError('JWT_SECRET must be defined in environment variables', 500);
+    }
     const decoded = jwt.verify(token, jwtSecret) as {
       id: string;
       username: string;

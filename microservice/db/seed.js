@@ -20,6 +20,7 @@ async function seed() {
 
   await client.connect();
 
+  // Esses usuários são apenas para demonstração/local development; troque por dados reais em produção.
   const users = [
     { email: 'admin@smartfinance.com', password: 'admin123', name: 'Admin User', role: 1 },
     { email: 'teste@smartfinance.com', password: 'teste123', name: 'Teste User', role: 0 },
