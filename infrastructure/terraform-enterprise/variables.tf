@@ -90,7 +90,7 @@ variable "db_instance_class" {
 
 variable "db_backup_retention_days" {
   type    = number
-  default = 7
+  default = 1
 }
 
 variable "db_backup_window" {
@@ -105,7 +105,7 @@ variable "db_maintenance_window" {
 
 variable "db_multi_az" {
   type    = bool
-  default = true
+  default = false
 }
 
 variable "db_apply_immediately" {
@@ -130,7 +130,7 @@ variable "nat_gateway_count" {
 
 variable "allowed_origins" {
   type    = list(string)
-  default = ["https://<YOUR_ALB_HOSTNAME>/"]
+  default = ["http://smartfinance-prod-alb-1713518371.sa-east-1.elb.amazonaws.com/"]
 }
 
 variable "cloudfront_cache_policy_id" {
@@ -150,12 +150,17 @@ variable "cloudfront_response_headers_policy_id" {
 
 variable "enable_guardduty" {
   type    = bool
-  default = true
+  default = false
 }
 
 variable "enable_securityhub" {
   type    = bool
-  default = true
+  default = false
+}
+
+variable "create_metric_alarms" {
+  type    = bool
+  default = false
 }
 
 variable "github_repo" {

@@ -9,6 +9,7 @@ resource "aws_cloudwatch_log_group" "backend" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
+  count = var.create_metric_alarms ? 1 : 0
   alarm_name          = "${local.name_prefix}-alb-5xx"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
@@ -24,6 +25,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "backend_cpu" {
+  count = var.create_metric_alarms ? 1 : 0
   alarm_name          = "${local.name_prefix}-backend-cpu"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
@@ -40,6 +42,7 @@ resource "aws_cloudwatch_metric_alarm" "backend_cpu" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "frontend_cpu" {
+  count = var.create_metric_alarms ? 1 : 0
   alarm_name          = "${local.name_prefix}-frontend-cpu"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
@@ -56,6 +59,7 @@ resource "aws_cloudwatch_metric_alarm" "frontend_cpu" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
+  count = var.create_metric_alarms ? 1 : 0
   alarm_name          = "${local.name_prefix}-rds-cpu"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
@@ -71,6 +75,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "rds_connections" {
+  count = var.create_metric_alarms ? 1 : 0
   alarm_name          = "${local.name_prefix}-rds-connections"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2

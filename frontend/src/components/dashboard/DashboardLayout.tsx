@@ -76,7 +76,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex h-16 items-center justify-between px-4 lg:px-8">
-          <div className="flex items-center">
+          <div className="flex items-center gap-3">
             <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="lg:hidden">
@@ -104,6 +104,15 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                 </nav>
               </SheetContent>
             </Sheet>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
+                SF
+              </div>
+              <div>
+                <p className="text-lg font-semibold leading-none">{t('sheetTitle')}</p>
+                <p className="text-xs text-muted-foreground">{t('sheetDescription')}</p>
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center space-x-2">
@@ -145,9 +154,9 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       </header>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:block fixed left-0 top-20 z-40 w-64 h-[calc(100vh-5rem)] border-r bg-background">
-        <ScrollArea className="h-full p-4 pt-6">
-          <nav className="space-y-2 mt-2">
+      <aside className="hidden lg:block fixed left-0 top-24 z-40 w-64 h-[calc(100vh-6rem)] border-r bg-background">
+        <ScrollArea className="h-full p-4 pt-10">
+          <nav className="space-y-2">
             {sidebarItems.map((item) => (
               <Button
                 key={item.labelKey}
@@ -164,7 +173,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       </aside>
 
       {/* Main Content */}
-      <main className="lg:ml-64 pt-20 pb-8">
+      <main className="lg:ml-64 pt-24 pb-8">
         <div className="px-4 lg:px-8">
           {children}
         </div>

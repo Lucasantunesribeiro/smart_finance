@@ -281,7 +281,7 @@ export const AccountsPage = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Balance
+              {localize('balanceLabel', 'Current Balance')}
             </label>
             <input
               type="number"
@@ -300,7 +300,7 @@ export const AccountsPage = () => {
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Account description (optional)"
+              placeholder={localize('descriptionPlaceholder', 'Account description (optional)')}
               rows={3}
             />
           </div>
@@ -313,7 +313,7 @@ export const AccountsPage = () => {
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <label htmlFor="isActive" className="text-sm text-gray-700">
-              Account is active
+              {t('active')}
             </label>
           </div>
         </div>
@@ -339,12 +339,12 @@ export const AccountsPage = () => {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
-            <p className="text-gray-600">Manage your financial accounts</p>
-          </div>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">{t('accountsTitle')}</h1>
+          <p className="text-gray-600">{t('accountsSubtitle')}</p>
         </div>
+      </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (
@@ -377,10 +377,7 @@ export const AccountsPage = () => {
           <EmptyState
             icon={<Wallet className="h-16 w-16" />}
             title={t('accountsEmptyTitle')}
-            description={localize(
-              'Comece adicionando sua primeira conta financeira para acompanhar suas finanças.',
-              'Get started by adding your first financial account to track your money.'
-            )}
+            description={t('accountsEmptyDescription')}
             actionLabel={t('addAccountAction')}
             onAction={() => setShowCreateModal(true)}
           />
@@ -410,7 +407,7 @@ export const AccountsPage = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">{localize('balanceLabel', 'Total Balance')}</p>
+                <p className="text-sm text-gray-600">{t('balanceLabel')}</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {formatCurrency(balanceData?.totalBalance || 0)}
                 </p>
@@ -424,7 +421,7 @@ export const AccountsPage = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">{localize('totalIncome', 'Total Assets')}</p>
+                <p className="text-sm text-gray-600">{t('totalIncome')}</p>
                 <p className="text-2xl font-bold text-green-600">
                   {formatCurrency(balanceData?.totalAssets || 0)}
                 </p>
@@ -438,7 +435,7 @@ export const AccountsPage = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">{localize('totalExpenses', 'Total Liabilities')}</p>
+                <p className="text-sm text-gray-600">{t('totalExpenses')}</p>
                 <p className="text-2xl font-bold text-red-600">
                   {formatCurrency(balanceData?.totalLiabilities || 0)}
                 </p>
@@ -452,7 +449,7 @@ export const AccountsPage = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                  <p className="text-sm text-gray-600">{localize('netAmount', 'Net Worth')}</p>
+                <p className="text-sm text-gray-600">{t('netAmount')}</p>
                 <p className="text-2xl font-bold text-blue-600">
                   {formatCurrency(balanceData?.netWorth || 0)}
                 </p>
@@ -499,7 +496,7 @@ export const AccountsPage = () => {
 
                 <div className="flex items-center justify-between pt-4 border-t">
                   <div className="flex items-center space-x-2 text-sm text-gray-500">
-                    <span>{account.isActive ? localize('active', 'Active') : localize('inactive', 'Inactive')}</span>
+                    <span>{account.isActive ? t('active') : t('inactive')}</span>
                     <span>•</span>
                     <span>{account.currency}</span>
                   </div>
