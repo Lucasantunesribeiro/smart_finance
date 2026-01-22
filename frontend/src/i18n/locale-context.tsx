@@ -39,6 +39,8 @@ export const LocaleProvider = ({ children }: { children: React.ReactNode }) => {
 
   const value = useMemo(() => {
     const localize = (ptText: string, enText?: string) => {
+      const translation = getTranslation(locale, ptText as TranslationKey);
+      if (translation) return translation;
       if (locale === 'pt') return ptText;
       return enText ?? ptText;
     };
