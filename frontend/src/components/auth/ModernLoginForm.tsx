@@ -89,15 +89,12 @@ export const ModernLoginForm = () => {
                 {localize('🔐 Credenciais de Teste', '🔐 Test Credentials')}
               </h4>
               <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
-                <div>
-                  <strong>Admin Principal:</strong> admin@smartfinance.com / password
-                </div>
-                <div>
-                  <strong>Admin Alt:</strong> admin@smartfinance.com / admin123
-                </div>
-                <div>
-                  <strong>Usuário:</strong> Lucas.afvr@gmail.com / 123456
-                </div>
+                <p>
+                  {localize(
+                    'Use credenciais temporárias armazenadas de forma segura e solicite acesso ao administrador.',
+                    'Use temporary credentials provided securely and request access from your administrator.'
+                  )}
+                </p>
               </div>
             </div>
 

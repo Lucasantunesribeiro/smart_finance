@@ -130,7 +130,7 @@ variable "nat_gateway_count" {
 
 variable "allowed_origins" {
   type    = list(string)
-  default = ["http://smartfinance-prod-alb-1713518371.sa-east-1.elb.amazonaws.com/"]
+  default = ["https://<YOUR_ALB_HOSTNAME>/"]
 }
 
 variable "cloudfront_cache_policy_id" {

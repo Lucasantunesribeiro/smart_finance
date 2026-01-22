@@ -176,8 +176,13 @@ builder.Services.AddSignalR();
 
 builder.Services.AddCors(options =>
 {
+    var albHostname = Environment.GetEnvironmentVariable("ALB_HOSTNAME");
+    var defaultOrigin = !string.IsNullOrWhiteSpace(albHostname)
+        ? $"https://{albHostname}/"
+        : "https://<YOUR_ALB_HOSTNAME>/";
+
     var allowedOrigins = (Environment.GetEnvironmentVariable("ALLOWED_ORIGINS")
-        ?? "http://smartfinance-prod-alb-1713518371.sa-east-1.elb.amazonaws.com/")
+        ?? defaultOrigin)
         .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     options.AddPolicy("AllowedOrigins", policy =>

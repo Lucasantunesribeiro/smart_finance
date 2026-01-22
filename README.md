@@ -1,11 +1,11 @@
 # SmartFinance
 
-Aplicação full-stack multi-idioma (pt-BR / en-US) rodando no ALB público `smartfinance-prod-alb-1713518371.sa-east-1.elb.amazonaws.com`. O Next.js serve o dashboard e o Node.js + microserviço cuidam da API (JWT com access + refresh, CSRF, rate limiting e validação). Toda a infraestrutura (ECR, ECS, VPC, RDS, WAF, CloudFront, Secrets Manager) está codificada em `infrastructure/terraform-enterprise`.
+Aplicação full-stack multi-idioma (pt-BR / en-US) hospedada via ALB privado; a URL pública é definida em `ALLOWED_ORIGINS`/`ALB_HOSTNAME` e pode apontar para seu domínio customizado. O Next.js serve o dashboard e o Node.js + microserviço controlam a API (JWT com access + refresh, CSRF, rate limiting e validação). Toda a infraestrutura (ECR, ECS, VPC, RDS, WAF, CloudFront, Secrets Manager) está codificada em `infrastructure/terraform-enterprise`.
 
-## Deploy público
-- Frontend: `http://smartfinance-prod-alb-1713518371.sa-east-1.elb.amazonaws.com/`
-- API: `https://smartfinance-prod-alb-1713518371.sa-east-1.elb.amazonaws.com/api/v1`
-- Health: `https://smartfinance-prod-alb-1713518371.sa-east-1.elb.amazonaws.com/health`
+## Deploy público (configurável)
+- Frontend: `https://<YOUR_ALB_HOSTNAME>/`
+- API: `https://<YOUR_ALB_HOSTNAME>/api/v1`
+- Health: `https://<YOUR_ALB_HOSTNAME>/health`
 
 ## Como rodar localmente
 1. `docker compose build` e `docker compose up`
@@ -33,7 +33,3 @@ Copie `.env.example` e defina `JWT_SECRET_KEY`, `JWT_ACCESS_SECRET`, `JWT_REFRES
 - ✅ Internacionalização ativa com toggle pt-br ↔ en
 - ✅ Monitoramento via CloudWatch e alertas WAF
 
-## Próximos passos
-1. Garantir que Secrets Managers mantenham JWT/DB/S3 atualizados
-2. Validar budgets/transactions diretamente em `/api/v1`
-3. Testar trocas de idioma e relatórios em produção após o próximo deploy
