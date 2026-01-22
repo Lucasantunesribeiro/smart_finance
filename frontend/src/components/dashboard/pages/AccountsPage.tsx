@@ -27,7 +27,7 @@ export const AccountsPage = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
-  const { localize } = useTranslation();
+  const { localize, t } = useTranslation();
   
   // Form state
   const [formData, setFormData] = useState({
@@ -365,23 +365,23 @@ export const AccountsPage = () => {
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
-              <p className="text-gray-600">Manage your financial accounts</p>
+              <h1 className="text-2xl font-bold text-gray-900">{t('accountsTitle')}</h1>
+              <p className="text-gray-600">{t('accountsSubtitle')}</p>
             </div>
-          <Button onClick={() => setShowCreateModal(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            {localize('addAccount', 'Add Account')}
-          </Button>
+            <Button onClick={() => setShowCreateModal(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              {t('addAccount')}
+            </Button>
           </div>
 
           <EmptyState
             icon={<Wallet className="h-16 w-16" />}
-            title={localize('accountsEmptyTitle', 'No accounts found')}
+            title={t('accountsEmptyTitle')}
             description={localize(
               'Comece adicionando sua primeira conta financeira para acompanhar suas finanças.',
               'Get started by adding your first financial account to track your money.'
             )}
-            actionLabel={localize('addAccountAction', 'Add Your First Account')}
+            actionLabel={t('addAccountAction')}
             onAction={() => setShowCreateModal(true)}
           />
         </div>
@@ -395,12 +395,12 @@ export const AccountsPage = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{localize('accountsTitle', 'Accounts')}</h1>
-          <p className="text-gray-600">{localize('accountsSubtitle', 'Manage your financial accounts')}</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('accountsTitle')}</h1>
+          <p className="text-gray-600">{t('accountsSubtitle')}</p>
         </div>
         <Button onClick={() => setShowCreateModal(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          Add Account
+          {t('addAccount')}
         </Button>
       </div>
 
