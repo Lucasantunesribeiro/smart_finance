@@ -9,10 +9,15 @@ export const LocaleToggle = () => {
   const label = `${t('languageLabel')} – ${t('currentLanguage')}`;
 
   return (
-    <Button variant="ghost" size="icon" onClick={toggleLocale} aria-label={label}>
+    <Button
+      variant="outline"
+      size="sm"
+      className="flex items-center gap-2"
+      onClick={toggleLocale}
+      aria-label={label}
+    >
       <Globe className="h-4 w-4" />
-      <span className="sr-only">{label}</span>
-      <span className="ml-2 text-xs font-semibold">{locale.toUpperCase()}</span>
+      <span className="text-xs font-semibold tracking-wide">{t('currentLanguage')}</span>
     </Button>
   );
 };
