@@ -9,8 +9,11 @@ set -euo pipefail
 # Pré-requisitos:
 # - Script 1-create-ec2.sh executado com sucesso
 # - Arquivo .env.ec2 existe
-# - Chave SSH /tmp/${KEY_NAME}.pem existe
+# - Chave SSH ${KEY_NAME}.pem no mesmo diretório deste script
 # ============================================================================
+
+# Diretório do script (absolute path, survives cd changes)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Cores para output
 RED='\033[0;31m'
@@ -42,8 +45,8 @@ log_info "Elastic IP: $ELASTIC_IP"
 log_info "Instance ID: $INSTANCE_ID"
 
 # Verificar chave SSH
-if [ ! -f "/tmp/${KEY_NAME}.pem" ]; then
-    log_error "Chave SSH /tmp/${KEY_NAME}.pem não encontrada"
+if [ ! -f "${SCRIPT_DIR}/${KEY_NAME}.pem" ]; then
+    log_error "Chave SSH ${SCRIPT_DIR}/${KEY_NAME}.pem não encontrada"
     exit 1
 fi
 
@@ -56,7 +59,7 @@ MAX_ATTEMPTS=30
 ATTEMPT=0
 
 while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-    if ssh -i "/tmp/${KEY_NAME}.pem" \
+    if ssh -i "${SCRIPT_DIR}/${KEY_NAME}.pem" \
         -o StrictHostKeyChecking=no \
         -o ConnectTimeout=5 \
         ubuntu@${ELASTIC_IP} "test -f /var/log/user-data-complete" 2>/dev/null; then
@@ -71,7 +74,7 @@ done
 
 if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
     log_error "Timeout aguardando instância ficar pronta"
-    log_info "Verificar logs: ssh -i /tmp/${KEY_NAME}.pem ubuntu@${ELASTIC_IP} 'tail -100 /var/log/user-data.log'"
+    log_info "Verificar logs: ssh -i ${SCRIPT_DIR}/${KEY_NAME}.pem ubuntu@${ELASTIC_IP} 'tail -100 /var/log/user-data.log'"
     exit 1
 fi
 
@@ -213,11 +216,11 @@ EOF
 
 # Copiar configuração para EC2
 log_info "Enviando configuração Nginx..."
-scp -i "/tmp/${KEY_NAME}.pem" -o StrictHostKeyChecking=no \
+scp -i "${SCRIPT_DIR}/${KEY_NAME}.pem" -o StrictHostKeyChecking=no \
     nginx.conf ubuntu@${ELASTIC_IP}:/tmp/nginx.conf
 
 # Instalar e configurar Nginx
-ssh -i "/tmp/${KEY_NAME}.pem" -o StrictHostKeyChecking=no ubuntu@${ELASTIC_IP} << 'EOSSH'
+ssh -i "${SCRIPT_DIR}/${KEY_NAME}.pem" -o StrictHostKeyChecking=no ubuntu@${ELASTIC_IP} << 'EOSSH'
 set -e
 
 # Instalar Nginx
@@ -447,14 +450,14 @@ tar czf /tmp/smartfinance.tar.gz \
 log_info "Código compactado: $(du -h /tmp/smartfinance.tar.gz | cut -f1)"
 
 # Enviar para EC2
-scp -i "infrastructure/aws-free-tier//tmp/${KEY_NAME}.pem" -o StrictHostKeyChecking=no \
+scp -i "${SCRIPT_DIR}/${KEY_NAME}.pem" -o StrictHostKeyChecking=no \
     /tmp/smartfinance.tar.gz \
     ubuntu@${ELASTIC_IP}:/tmp/
 
 # Enviar docker-compose e .env
-scp -i "infrastructure/aws-free-tier//tmp/${KEY_NAME}.pem" -o StrictHostKeyChecking=no \
-    infrastructure/aws-free-tier/docker-compose.ec2.yml \
-    infrastructure/aws-free-tier/.env.production \
+scp -i "${SCRIPT_DIR}/${KEY_NAME}.pem" -o StrictHostKeyChecking=no \
+    "${SCRIPT_DIR}/docker-compose.ec2.yml" \
+    "${SCRIPT_DIR}/.env.production" \
     ubuntu@${ELASTIC_IP}:/tmp/
 
 log_info "Código enviado para EC2"
@@ -464,7 +467,7 @@ log_info "Código enviado para EC2"
 # ============================================================================
 log_info "Extraindo código e iniciando aplicação..."
 
-ssh -i "infrastructure/aws-free-tier//tmp/${KEY_NAME}.pem" -o StrictHostKeyChecking=no ubuntu@${ELASTIC_IP} << 'EOSSH'
+ssh -i "${SCRIPT_DIR}/${KEY_NAME}.pem" -o StrictHostKeyChecking=no ubuntu@${ELASTIC_IP} << 'EOSSH'
 set -e
 
 cd /opt/smartfinance
@@ -532,7 +535,7 @@ fi
 # ============================================================================
 log_info "Configurando auto-start..."
 
-ssh -i "infrastructure/aws-free-tier//tmp/${KEY_NAME}.pem" -o StrictHostKeyChecking=no ubuntu@${ELASTIC_IP} << 'EOSSH'
+ssh -i "${SCRIPT_DIR}/${KEY_NAME}.pem" -o StrictHostKeyChecking=no ubuntu@${ELASTIC_IP} << 'EOSSH'
 set -e
 
 # Criar serviço systemd para docker-compose
@@ -579,10 +582,10 @@ echo "  Backend:   curl http://${ELASTIC_IP}/api/v1/health"
 echo "  Nginx:     curl http://${ELASTIC_IP}/health"
 echo ""
 echo "Verificar logs:"
-echo "  ssh -i /tmp/${KEY_NAME}.pem ubuntu@${ELASTIC_IP} 'docker compose -f /opt/smartfinance/docker-compose.yml logs -f'"
+echo "  ssh -i ${SCRIPT_DIR}/${KEY_NAME}.pem ubuntu@${ELASTIC_IP} 'docker compose -f /opt/smartfinance/docker-compose.yml logs -f'"
 echo ""
 echo "Gerenciar aplicação:"
-echo "  ssh -i /tmp/${KEY_NAME}.pem ubuntu@${ELASTIC_IP}"
+echo "  ssh -i ${SCRIPT_DIR}/${KEY_NAME}.pem ubuntu@${ELASTIC_IP}"
 echo "  cd /opt/smartfinance"
 echo "  docker compose ps"
 echo "  docker compose logs -f"
@@ -608,7 +611,7 @@ Credentials:
 
 SSH Access:
 -----------
-ssh -i /tmp/${KEY_NAME}.pem ubuntu@${ELASTIC_IP}
+ssh -i ${SCRIPT_DIR}/${KEY_NAME}.pem ubuntu@${ELASTIC_IP}
 
 Application Directory:
 ----------------------
