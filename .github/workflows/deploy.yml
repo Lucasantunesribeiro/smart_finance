@@ -36,11 +36,11 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
-            docker compose -f infrastructure/aws-free-tier/docker-compose.ec2.yml build
-            docker compose -f infrastructure/aws-free-tier/docker-compose.ec2.yml up -d
+            docker compose --project-directory . -f infrastructure/aws-free-tier/docker-compose.ec2.yml build
+            docker compose --project-directory . -f infrastructure/aws-free-tier/docker-compose.ec2.yml up -d
 
             echo "=== Container Status ==="
-            docker compose -f infrastructure/aws-free-tier/docker-compose.ec2.yml ps
+            docker compose --project-directory . -f infrastructure/aws-free-tier/docker-compose.ec2.yml ps
 
             sleep 10
             curl -fs http://localhost/health || echo "WARNING: health check failed"
