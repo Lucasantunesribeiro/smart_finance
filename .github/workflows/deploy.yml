@@ -22,17 +22,22 @@ jobs:
             set -e
             cd /opt/smartfinance
 
-            # Pull latest code
-            git pull origin main
+            # Initialize git on first CI/CD deploy
+            if [ ! -d .git ]; then
+              git init
+              git remote add origin https://github.com/Lucasantunesribeiro/smart_finance.git
+            fi
 
-            # Build updated images and restart containers
-            docker compose build
-            docker compose up -d
+            # Pull latest code (.env is untracked so git won't touch it)
+            git fetch origin main
+            git reset --hard origin/main
 
-            # Show container status
+            # Build and restart using EC2-optimized compose + existing .env
+            docker compose -f infrastructure/aws-free-tier/docker-compose.ec2.yml build
+            docker compose -f infrastructure/aws-free-tier/docker-compose.ec2.yml up -d
+
             echo "=== Container Status ==="
-            docker compose ps
+            docker compose -f infrastructure/aws-free-tier/docker-compose.ec2.yml ps
 
-            # Basic health check
             sleep 10
             curl -fs http://localhost/health || echo "WARNING: health check failed"
