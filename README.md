@@ -2,7 +2,7 @@
 
 > Plataforma full-stack de gestão financeira com foco em performance e otimização de custos
 
-[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](http://98.84.92.190)
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](http://3.223.37.57)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
 [![AWS](https://img.shields.io/badge/AWS-FF9900?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/)
@@ -17,7 +17,7 @@
 
 ## 🚀 Demo
 
-**URL:** http://98.84.92.190
+**URL:** http://3.223.37.57
 
 **Credenciais de teste:**
 - Email: `admin@smartfinance.com`
@@ -175,8 +175,8 @@ terraform apply
 
 ## 🔗 Links
 
-- [Demo Live](http://98.84.92.190)
-- [Documentação API](http://98.84.92.190/api/v1/docs)
+- [Demo Live](http://3.223.37.57)
+- [Documentação API](http://3.223.37.57/api/v1/docs)
 
 ## 📄 Licença
 
