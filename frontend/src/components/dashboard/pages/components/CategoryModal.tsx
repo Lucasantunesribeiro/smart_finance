@@ -194,9 +194,6 @@ export const CategoryModal = ({ isOpen, onClose, category, mode, onSubmit, isSub
             >
               <option value={CategoryType.Income}>Receita</option>
               <option value={CategoryType.Expense}>Despesa</option>
-              <option value={CategoryType.Transfer}>Transferência</option>
-              <option value={CategoryType.Investment}>Investimento</option>
-              <option value={CategoryType.Other}>Outro</option>
             </select>
           </div>
 
@@ -263,10 +260,7 @@ export const CategoryModal = ({ isOpen, onClose, category, mode, onSubmit, isSub
                   {formData.name || 'Nome da categoria'}
                 </p>
                 <p className="text-sm text-gray-500">
-                  {formData.type === CategoryType.Income ? 'Receita' : 
-                   formData.type === CategoryType.Expense ? 'Despesa' :
-                   formData.type === CategoryType.Transfer ? 'Transferência' :
-                   formData.type === CategoryType.Investment ? 'Investimento' : 'Outro'}
+                  {formData.type === CategoryType.Income ? 'Receita' : 'Despesa'}
                 </p>
               </div>
             </div>

@@ -208,13 +208,9 @@ export const AddTransactionDialog = ({ children, onSuccess }: AddTransactionDial
                     </SelectItem>
                   ))
                 ) : (
-                  <>
-                    <SelectItem value="11111111-1111-1111-1111-111111111001">🍽️ Alimentação</SelectItem>
-                    <SelectItem value="11111111-1111-1111-1111-111111111002">🚌 Transporte</SelectItem>
-                    <SelectItem value="11111111-1111-1111-1111-111111111003">🎮 Lazer</SelectItem>
-                    <SelectItem value="11111111-1111-1111-1111-111111111004">🪙 Salário</SelectItem>
-                    <SelectItem value="11111111-1111-1111-1111-111111111005">📦 Outros</SelectItem>
-                  </>
+                  <SelectItem value="no-categories" disabled>
+                    {localize('Nenhuma categoria disponível', 'No categories available')}
+                  </SelectItem>
                 )}
               </SelectContent>
             </Select>
@@ -273,7 +269,7 @@ export const AddTransactionDialog = ({ children, onSuccess }: AddTransactionDial
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               {localize('Cancelar', 'Cancel')}
             </Button>
-            <Button type="submit" disabled={loading || accounts.length === 0}>
+            <Button type="submit" disabled={loading || accounts.length === 0 || categories.length === 0}>
               {loading ? localize('Criando...', 'Creating...') : localize('Criar transação', 'Create Transaction')}
             </Button>
           </div>

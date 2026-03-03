@@ -177,10 +177,9 @@ export const BudgetPage = () => {
   };
 
   const getPeriodText = (period: BudgetPeriod) => {
-    const options = {
+    const options: Record<string, string> = {
       [BudgetPeriod.Weekly]: localize('Semanal', 'Weekly'),
       [BudgetPeriod.Monthly]: localize('Mensal', 'Monthly'),
-      [BudgetPeriod.Quarterly]: localize('Trimestral', 'Quarterly'),
       [BudgetPeriod.Yearly]: localize('Anual', 'Yearly'),
     };
     return options[period] || options[BudgetPeriod.Monthly];
@@ -213,7 +212,7 @@ export const BudgetPage = () => {
 
       {/* Period Filter */}
       <div className="flex space-x-2">
-        {Object.values(BudgetPeriod).filter(value => typeof value === 'number').map((period) => (
+        {Object.values(BudgetPeriod).map((period) => (
           <button
             key={period}
             onClick={() => setSelectedPeriod(period as BudgetPeriod)}
@@ -437,12 +436,11 @@ export const BudgetPage = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Período</label>
                 <select 
                   value={formData.period}
-                  onChange={(e) => setFormData({ ...formData, period: parseInt(e.target.value) as BudgetPeriod })}
+                  onChange={(e) => setFormData({ ...formData, period: e.target.value as BudgetPeriod })}
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value={BudgetPeriod.Weekly}>Semanal</option>
                   <option value={BudgetPeriod.Monthly}>Mensal</option>
-                  <option value={BudgetPeriod.Quarterly}>Trimestral</option>
                   <option value={BudgetPeriod.Yearly}>Anual</option>
                 </select>
               </div>
@@ -528,12 +526,11 @@ export const BudgetPage = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Período</label>
                 <select 
                   value={formData.period}
-                  onChange={(e) => setFormData({ ...formData, period: parseInt(e.target.value) as BudgetPeriod })}
+                  onChange={(e) => setFormData({ ...formData, period: e.target.value as BudgetPeriod })}
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value={BudgetPeriod.Weekly}>Semanal</option>
                   <option value={BudgetPeriod.Monthly}>Mensal</option>
-                  <option value={BudgetPeriod.Quarterly}>Trimestral</option>
                   <option value={BudgetPeriod.Yearly}>Anual</option>
                 </select>
               </div>
