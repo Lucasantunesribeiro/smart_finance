@@ -50,6 +50,11 @@ if [ ! -f "${SCRIPT_DIR}/${KEY_NAME}.pem" ]; then
     exit 1
 fi
 
+# Copiar chave para filesystem Linux (resolve restrição de permissão no WSL/Windows)
+SSH_KEY="/tmp/${KEY_NAME}-deploy.pem"
+cp "${SCRIPT_DIR}/${KEY_NAME}.pem" "${SSH_KEY}"
+chmod 600 "${SSH_KEY}"
+
 # ============================================================================
 # 1. Aguardar instância ficar pronta
 # ============================================================================
@@ -59,7 +64,7 @@ MAX_ATTEMPTS=30
 ATTEMPT=0
 
 while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-    if ssh -i "${SCRIPT_DIR}/${KEY_NAME}.pem" \
+    if ssh -i "${SSH_KEY}" \
         -o StrictHostKeyChecking=no \
         -o ConnectTimeout=5 \
         ubuntu@${ELASTIC_IP} "test -f /var/log/user-data-complete" 2>/dev/null; then
@@ -216,11 +221,11 @@ EOF
 
 # Copiar configuração para EC2
 log_info "Enviando configuração Nginx..."
-scp -i "${SCRIPT_DIR}/${KEY_NAME}.pem" -o StrictHostKeyChecking=no \
+scp -i "${SSH_KEY}" -o StrictHostKeyChecking=no \
     nginx.conf ubuntu@${ELASTIC_IP}:/tmp/nginx.conf
 
 # Instalar e configurar Nginx
-ssh -i "${SCRIPT_DIR}/${KEY_NAME}.pem" -o StrictHostKeyChecking=no ubuntu@${ELASTIC_IP} << 'EOSSH'
+ssh -i "${SSH_KEY}" -o StrictHostKeyChecking=no ubuntu@${ELASTIC_IP} << 'EOSSH'
 set -e
 
 # Instalar Nginx
@@ -450,12 +455,12 @@ tar czf /tmp/smartfinance.tar.gz \
 log_info "Código compactado: $(du -h /tmp/smartfinance.tar.gz | cut -f1)"
 
 # Enviar para EC2
-scp -i "${SCRIPT_DIR}/${KEY_NAME}.pem" -o StrictHostKeyChecking=no \
+scp -i "${SSH_KEY}" -o StrictHostKeyChecking=no \
     /tmp/smartfinance.tar.gz \
     ubuntu@${ELASTIC_IP}:/tmp/
 
 # Enviar docker-compose e .env
-scp -i "${SCRIPT_DIR}/${KEY_NAME}.pem" -o StrictHostKeyChecking=no \
+scp -i "${SSH_KEY}" -o StrictHostKeyChecking=no \
     "${SCRIPT_DIR}/docker-compose.ec2.yml" \
     "${SCRIPT_DIR}/.env.production" \
     ubuntu@${ELASTIC_IP}:/tmp/
@@ -467,7 +472,7 @@ log_info "Código enviado para EC2"
 # ============================================================================
 log_info "Extraindo código e iniciando aplicação..."
 
-ssh -i "${SCRIPT_DIR}/${KEY_NAME}.pem" -o StrictHostKeyChecking=no ubuntu@${ELASTIC_IP} << 'EOSSH'
+ssh -i "${SSH_KEY}" -o StrictHostKeyChecking=no ubuntu@${ELASTIC_IP} << 'EOSSH'
 set -e
 
 cd /opt/smartfinance
@@ -535,7 +540,7 @@ fi
 # ============================================================================
 log_info "Configurando auto-start..."
 
-ssh -i "${SCRIPT_DIR}/${KEY_NAME}.pem" -o StrictHostKeyChecking=no ubuntu@${ELASTIC_IP} << 'EOSSH'
+ssh -i "${SSH_KEY}" -o StrictHostKeyChecking=no ubuntu@${ELASTIC_IP} << 'EOSSH'
 set -e
 
 # Criar serviço systemd para docker-compose

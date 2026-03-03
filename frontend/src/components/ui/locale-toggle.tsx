@@ -5,7 +5,7 @@ import { useTranslation } from '@/i18n/locale-context';
 import { Globe } from 'lucide-react';
 
 export const LocaleToggle = () => {
-  const { locale, toggleLocale, t } = useTranslation();
+  const { toggleLocale, t } = useTranslation();
   const label = `${t('languageLabel')} – ${t('currentLanguage')}`;
 
   return (
