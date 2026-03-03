@@ -13,8 +13,8 @@ const transactionCreateSchema = Joi.object({
   description: Joi.string().min(1).max(200).required(),
   amount: Joi.number().positive().required(),
   type: Joi.number().valid(0, 1, 2).required(),
-  categoryId: Joi.string().guid({ version: ['uuidv4'] }).required(),
-  accountId: Joi.string().guid({ version: ['uuidv4'] }).required(),
+  categoryId: Joi.string().guid().required(),
+  accountId: Joi.string().guid().required(),
   transactionDate: Joi.date().iso().optional(),
   status: Joi.number().integer().valid(0, 1, 2, 3).optional(),
 });
@@ -23,8 +23,8 @@ const transactionUpdateSchema = Joi.object({
   description: Joi.string().min(1).max(200).optional(),
   amount: Joi.number().positive().optional(),
   type: Joi.number().valid(0, 1, 2).optional(),
-  categoryId: Joi.string().guid({ version: ['uuidv4'] }).optional(),
-  accountId: Joi.string().guid({ version: ['uuidv4'] }).optional(),
+  categoryId: Joi.string().guid().optional(),
+  accountId: Joi.string().guid().optional(),
   transactionDate: Joi.date().iso().optional(),
   status: Joi.number().integer().valid(0, 1, 2, 3).optional(),
 }).min(1);
@@ -52,7 +52,7 @@ const categoryCreateSchema = Joi.object({
   description: Joi.string().max(200).allow('').optional(),
   color: Joi.string().pattern(/^#([0-9a-fA-F]{6})$/).default('#000000'),
   icon: Joi.string().max(50).allow(null, '').optional(),
-  parentCategoryId: Joi.string().guid({ version: ['uuidv4'] }).allow(null).optional(),
+  parentCategoryId: Joi.string().guid().allow(null).optional(),
 });
 
 const categoryUpdateSchema = Joi.object({
@@ -61,7 +61,7 @@ const categoryUpdateSchema = Joi.object({
   description: Joi.string().max(200).allow('').optional(),
   color: Joi.string().pattern(/^#([0-9a-fA-F]{6})$/).optional(),
   icon: Joi.string().max(50).allow(null, '').optional(),
-  parentCategoryId: Joi.string().guid({ version: ['uuidv4'] }).allow(null).optional(),
+  parentCategoryId: Joi.string().guid().allow(null).optional(),
   isActive: Joi.boolean().optional(),
 }).min(1);
 
@@ -69,7 +69,7 @@ const budgetCreateSchema = Joi.object({
   name: Joi.string().min(1).max(120).required(),
   description: Joi.string().max(200).allow('').optional(),
   allocated: Joi.number().positive().required(),
-  categoryId: Joi.string().guid({ version: ['uuidv4'] }).allow(null).optional(),
+  categoryId: Joi.string().guid().allow(null).optional(),
   period: Joi.string().valid('weekly', 'monthly', 'yearly').default('monthly'),
   startDate: Joi.date().iso().optional(),
   endDate: Joi.date().iso().optional(),
@@ -80,7 +80,7 @@ const budgetUpdateSchema = Joi.object({
   name: Joi.string().min(1).max(120).optional(),
   description: Joi.string().max(200).allow('').optional(),
   allocated: Joi.number().positive().optional(),
-  categoryId: Joi.string().guid({ version: ['uuidv4'] }).allow(null).optional(),
+  categoryId: Joi.string().guid().allow(null).optional(),
   period: Joi.string().valid('weekly', 'monthly', 'yearly').optional(),
   startDate: Joi.date().iso().optional(),
   endDate: Joi.date().iso().optional(),
