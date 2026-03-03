@@ -1,9 +1,11 @@
 name: Deploy to GitHub Pages
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
+    inputs:
+      disabled:
+        description: "This workflow is disabled - app is deployed to EC2 at 3.223.37.57"
+        required: false
 
 permissions:
   contents: write
