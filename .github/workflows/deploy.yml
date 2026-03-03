@@ -14,25 +14,28 @@ jobs:
     steps:
       - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: GH_TOKEN
           script: |
             set -e
             cd /opt/smartfinance
 
-            # Initialize git on first CI/CD deploy
+            # Configure git remote with token auth (works for public and private repos)
             if [ ! -d .git ]; then
               git init
-              git remote add origin https://github.com/Lucasantunesribeiro/smart_finance.git
+              git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/Lucasantunesribeiro/smart_finance.git"
+            else
+              git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/Lucasantunesribeiro/smart_finance.git"
             fi
 
-            # Pull latest code (.env is untracked so git won't touch it)
             git fetch origin main
             git reset --hard origin/main
 
-            # Build and restart using EC2-optimized compose + existing .env
             docker compose -f infrastructure/aws-free-tier/docker-compose.ec2.yml build
             docker compose -f infrastructure/aws-free-tier/docker-compose.ec2.yml up -d
 
