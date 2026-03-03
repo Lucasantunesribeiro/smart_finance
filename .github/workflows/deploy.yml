@@ -1,63 +1,38 @@
-name: Deploy SmartFinance to ECS
+name: Deploy SmartFinance to EC2
 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
-    inputs:
-      run_migrations:
-        description: "Run database migrations"
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: read
-  id-token: write
-
-env:
-  AWS_REGION: sa-east-1
-  CLUSTER_NAME: smartfinance-prod-cluster
-  SERVICE_FRONTEND: smartfinance-prod-frontend
-  SERVICE_BACKEND: smartfinance-prod-backend
-  TASK_BACKEND: smartfinance-prod-backend
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/smartfinance
 
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
+            # Pull latest code
+            git pull origin main
 
-      - name: Build and push frontend image
-        run: |
-          docker build -t ${{ secrets.ECR_FRONTEND_URI }}:latest ./frontend
-          docker push ${{ secrets.ECR_FRONTEND_URI }}:latest
+            # Build updated images and restart containers
+            docker compose build
+            docker compose up -d
 
-      - name: Build and push backend image
-        run: |
-          docker build -t ${{ secrets.ECR_BACKEND_URI }}:latest ./microservice
-          docker push ${{ secrets.ECR_BACKEND_URI }}:latest
+            # Show container status
+            echo "=== Container Status ==="
+            docker compose ps
 
-      - name: Run migrations (optional)
-        if: ${{ inputs.run_migrations }}
-        run: |
-          aws ecs run-task \
-            --cluster ${{ env.CLUSTER_NAME }} \
-            --launch-type FARGATE \
-            --task-definition ${{ env.TASK_BACKEND }} \
-            --network-configuration "awsvpcConfiguration={subnets=[${{ secrets.ECS_PRIVATE_SUBNETS }}],securityGroups=[${{ secrets.ECS_SECURITY_GROUP }}],assignPublicIp=DISABLED}" \
-            --overrides '{"containerOverrides":[{"name":"backend","command":["node","db/migrate.js"]}]}'
-
-      - name: Force new deployment
-        run: |
-          aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_BACKEND }} --force-new-deployment
-          aws ecs update-service --cluster ${{ env.CLUSTER_NAME }} --service ${{ env.SERVICE_FRONTEND }} --force-new-deployment
+            # Basic health check
+            sleep 10
+            curl -fs http://localhost/health || echo "WARNING: health check failed"
