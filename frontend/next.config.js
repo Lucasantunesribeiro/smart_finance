@@ -28,7 +28,14 @@ const nextConfig = {
       "font-src 'self' data:",
       "style-src 'self' 'unsafe-inline'",
       `script-src ${scriptSrc.join(' ')}`,
-      `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || ''}`.trim(),
+      (() => {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+        let origin = '';
+        if (apiUrl) {
+          try { origin = new URL(apiUrl).origin; } catch { origin = apiUrl; }
+        }
+        return `connect-src 'self'${origin ? ' ' + origin : ''}`;
+      })(),
     ].join('; ');
 
     return [

@@ -77,6 +77,9 @@ services:
       dockerfile: Dockerfile
       args:
         - NODE_ENV=production
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+        - NEXT_PUBLIC_SIGNALR_URL=${NEXT_PUBLIC_SIGNALR_URL}
+        - NEXT_PUBLIC_PAYMENT_API_URL=${NEXT_PUBLIC_PAYMENT_API_URL}
     image: smartfinance-frontend:latest
     container_name: smartfinance_frontend
     restart: unless-stopped
