@@ -5,7 +5,7 @@ import { X, Save, Palette, Tag, Hash } from 'lucide-react';
 import { Category, CategoryType } from '@/types/category';
 import { CreateCategoryDto, UpdateCategoryDto } from '@/services/categoryService';
 
-type CategoryModalPayload = CreateCategoryDto | (UpdateCategoryDto & { id?: string });
+type CategoryModalPayload = CreateCategoryDto | (UpdateCategoryDto & { id: string });
 
 interface CategoryModalProps {
   isOpen: boolean;
@@ -100,8 +100,8 @@ export const CategoryModal = ({ isOpen, onClose, category, mode, onSubmit, isSub
     
     if (!validateForm()) return;
 
-    const submitData = mode === 'edit' 
-      ? { ...formData, id: category?.id }
+    const submitData = mode === 'edit'
+      ? { ...formData, id: category?.id ?? '' }
       : formData;
 
     onSubmit(submitData);

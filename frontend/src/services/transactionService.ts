@@ -20,7 +20,7 @@ const buildParams = (filter: Record<string, unknown>) => {
 
 export const transactionService = {
   async getTransactions(filter: TransactionFilter): Promise<PagedResult<Transaction>> {
-    const params = buildParams(filter);
+    const params = buildParams(filter as Record<string, unknown>);
     const response = await api.get<PagedResult<Transaction>>(`/transactions?${params}`);
     return response.data;
   },
@@ -54,7 +54,7 @@ export const transactionService = {
   },
 
   async exportTransactions(filter: TransactionFilter, format: 'csv' | 'pdf' | 'excel'): Promise<Blob> {
-    const params = buildParams(filter);
+    const params = buildParams(filter as Record<string, unknown>);
     params.append('format', format);
     const response = await api.get(`/transactions/export?${params}`, {
       responseType: 'blob',

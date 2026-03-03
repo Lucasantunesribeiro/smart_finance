@@ -38,6 +38,7 @@ import {
   LogOut
 } from 'lucide-react';
 import { useTranslation } from '@/i18n/locale-context';
+import type { TranslationKey } from '@/i18n/translations';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -50,7 +51,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { t } = useTranslation();
 
-  const sidebarItems = [
+  const sidebarItems: { icon: React.ElementType; labelKey: TranslationKey; href: string }[] = [
     { icon: Home, labelKey: 'sidebarOverview', href: '/dashboard' },
     { icon: Receipt, labelKey: 'sidebarTransactions', href: '/dashboard/transactions' },
     { icon: Wallet, labelKey: 'sidebarAccounts', href: '/dashboard/accounts' },

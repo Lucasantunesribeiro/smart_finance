@@ -34,8 +34,8 @@ export const LocaleProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const toggleLocale = useCallback(() => {
-    setLocale((current) => (current === 'pt' ? 'en' : 'pt'));
-  }, [setLocale]);
+    setLocaleState((current) => (current === 'pt' ? 'en' : 'pt'));
+  }, []);
 
   const value = useMemo(() => {
     const localize = (ptText: string, enText?: string) => {
