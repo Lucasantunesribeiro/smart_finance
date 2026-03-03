@@ -1,5 +1,13 @@
 import React from 'react';
 import type { GetServerSideProps } from 'next';
+import type { IncomingMessage } from 'http';
+
+const readBody = (req: IncomingMessage): Promise<string> =>
+  new Promise((resolve) => {
+    let data = '';
+    req.on('data', (chunk: Buffer) => { data += chunk.toString(); });
+    req.on('end', () => resolve(data));
+  });
 
 export default function ProxyPage() {
   return React.createElement('div', null, 'Proxy Handler');
@@ -42,7 +50,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     // Get request body for POST/PUT
     let body: string | undefined;
     if (req.method === 'POST' || req.method === 'PUT') {
-      body = JSON.stringify(req.body);
+      body = await readBody(req);
     }
 
     // Make request to backend
