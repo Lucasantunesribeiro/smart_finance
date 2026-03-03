@@ -17,10 +17,9 @@ export interface Budget {
 }
 
 export enum BudgetPeriod {
-  Weekly = 0,
-  Monthly = 1,
-  Quarterly = 2,
-  Yearly = 3,
+  Weekly = 'weekly',
+  Monthly = 'monthly',
+  Yearly = 'yearly',
 }
 
 export interface CreateBudgetRequest {
