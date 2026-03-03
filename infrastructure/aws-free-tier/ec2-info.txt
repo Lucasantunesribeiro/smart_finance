@@ -2,16 +2,16 @@ SmartFinance - AWS Free Tier EC2 Instance
 ==========================================
 
 Região: us-east-1
-Instância ID: i-0a1c76069951d9df6
+Instância ID: i-092bc2d172cffe5e7
 Instância Type: t3.micro
-AMI ID: ami-0030e4319cbf4dbf2
-Elastic IP: 98.84.92.190
-Security Group: sg-06f5a527ac83eafa6
+AMI ID: ami-04680790a315cd58d
+Elastic IP: 3.223.37.57
+Security Group: sg-0ddffcaf929bae950
 Key Pair: smartfinance-key.pem
 
 Conectar via SSH:
 -----------------
-ssh -i smartfinance-key.pem ubuntu@98.84.92.190
+ssh -i smartfinance-key.pem ubuntu@3.223.37.57
 
 Custos estimados:
 -----------------
@@ -21,8 +21,8 @@ Custos estimados:
 Próximos passos:
 -----------------
 1. Aguarde 5 minutos para user-data script completar
-2. Execute: ssh -i smartfinance-key.pem ubuntu@98.84.92.190
+2. Execute: ssh -i smartfinance-key.pem ubuntu@3.223.37.57
 3. Verifique instalação: cat /var/log/user-data.log
 4. Execute: ./2-deploy-application.sh
 
-Criado em: Wed Feb  4 06:54:03 -03 2026
+Criado em: Tue Mar  3 10:42:13 -03 2026

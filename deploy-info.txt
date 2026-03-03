@@ -1,0 +1,36 @@
+SmartFinance - Deploy Information
+==================================
+
+URL: http://3.223.37.57
+Deploy Date: Tue Mar  3 10:58:16 -03 2026
+
+Credentials:
+------------
+(Use as credenciais de demonstração do seed data, se SEED_DEMO_DATA=true)
+
+SSH Access:
+-----------
+ssh -i /mnt/d/programacao/smartfinance/infrastructure/aws-free-tier/smartfinance-key.pem ubuntu@3.223.37.57
+
+Application Directory:
+----------------------
+/opt/smartfinance
+
+Manage Application:
+-------------------
+cd /opt/smartfinance
+docker compose ps
+docker compose logs -f
+docker compose restart [service]
+
+Endpoints:
+----------
+Frontend:  http://3.223.37.57/
+Backend:   http://3.223.37.57/api/v1/health
+Nginx:     http://3.223.37.57/health
+
+Next Steps:
+-----------
+1. Configurar domínio DNS (apontar A record para 3.223.37.57)
+2. Configurar SSL: ./3-setup-ssl.sh your-domain.com
+3. Configurar backups: ./4-setup-backups.sh
