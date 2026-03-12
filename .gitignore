@@ -281,3 +281,10 @@ pnpm-lock.yaml
 *.js.map
 *.min.js
 *.min.css
+
+# ===================================
+# Local-only files (not tracked)
+# ===================================
+CLAUDE.md
+Descricao_Portfolio_SmartFinance.md
+Descricao_Portfolio_SmartFinance_v2.md

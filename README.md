@@ -1,187 +1,189 @@
 # SmartFinance
 
-> Plataforma full-stack de gestão financeira com foco em performance e otimização de custos
+> Plataforma full-stack de gestão financeira pessoal com backend Node.js operacional e backend .NET 8 enterprise
 
-[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](http://3.223.37.57)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-000?logo=next.js&logoColor=white)](https://nextjs.org/)
+[![.NET](https://img.shields.io/badge/.NET%208-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![AWS](https://img.shields.io/badge/AWS-FF9900?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/)
+[![CI](https://github.com/Lucasantunesribeiro/smart_finance/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/Lucasantunesribeiro/smart_finance/actions/workflows/ci-cd.yml)
 
-## 🎯 Destaques
+## Visão Geral
 
-- **💰 Economia de 100%** - Redução de $1,800/ano em custos AWS (migração ECS Fargate → EC2 Free Tier)
-- **⚡ Alta Performance** - 87MB de uso em 1GB RAM, response time < 200ms
-- **🔒 Segurança Completa** - JWT, bcrypt, CSRF, rate limiting, CSP headers
-- **🌐 Multi-idioma** - Interface pt-BR/en-US com toggle dinâmico
-- **📊 Real-time** - Dashboard com atualizações em tempo real via SignalR
+SmartFinance cobre o ciclo completo de um produto SaaS financeiro: autenticação JWT, segregação de dados por usuário, contas, transações, categorias, orçamentos e analytics. O repositório mantém duas trilhas de backend coexistindo intencionalmente como demonstração de amplitude técnica.
 
-## 🚀 Demo
+| Camada | Tecnologia | Status |
+|--------|-----------|--------|
+| Frontend | Next.js 14, React 18, TypeScript, TailwindCSS, shadcn/ui | Produção |
+| Backend operacional | Node.js (HTTP nativo), PostgreSQL 15, JWT | Produção |
+| Backend enterprise | .NET 8, Clean Architecture, CQRS/MediatR, EF Core | Portfólio |
+| Infraestrutura | AWS EC2 + Docker Compose (atual) / ECS Fargate + RDS (Terraform) | Ambos |
 
-**URL:** http://3.223.37.57
+## Funcionalidades
 
-**Credenciais de teste:**
-- Email: `admin@smartfinance.com`
-- Senha: `admin123`
+- **Autenticação** — JWT com refresh token rotation, cookies HttpOnly, CSRF protection
+- **Contas** — CRUD com saldo consolidado por usuário
+- **Transações** — criação, edição, filtros por período/categoria/conta, paginação
+- **Categorias** — hierarquia pai/filho, isolamento por usuário, stats de uso
+- **Orçamentos** — períodos configuráveis, alertas de utilização
+- **Analytics** — income/expenses por período, tendências com variação %, cash flow, financial summary com savings rate e budget utilization
+- **Multi-idioma** — pt-BR / en-US com toggle dinâmico
 
-## 🛠️ Stack
+## Stack
 
 ### Frontend
-- Next.js 14, TypeScript, TailwindCSS
-- React Query, Shadcn/ui, i18n
+- **Next.js 14** (App Router), **React 18**, **TypeScript**
+- **TailwindCSS**, **shadcn/ui** (Radix UI)
+- **TanStack Query** (server state), **Axios**
+- **Recharts** (gráficos), **date-fns**
 
-### Backend
-- Node.js, Express, PostgreSQL 15
-- JWT authentication, bcrypt, rate limiting
+### Backend operacional (Node.js)
+- HTTP nativo sem framework — roteador customizado `SmartRouter`
+- **PostgreSQL 15** via `pg` com SQL parametrizado
+- **JWT** (access 15min + refresh 7d), **bcryptjs**, CSRF, rate limiting por IP/usuário
+- Migrations incrementais em `db/migrations/`
+
+### Backend enterprise (.NET 8)
+- **Clean Architecture** (Domain → Application → Infrastructure → WebApi)
+- **CQRS** com **MediatR** (Auth + Transactions end-to-end; Analytics com queries EF Core reais)
+- **Entity Framework Core** (PostgreSQL prod / SQLite dev)
+- **FluentValidation**, **Serilog**, **Swagger**, **SignalR**
 
 ### Infraestrutura
-- AWS (EC2, RDS, CloudFront, ALB, WAF)
-- Docker, Docker Compose, Nginx
-- Terraform (IaC), GitHub Actions (CI/CD)
+- **Docker Compose** — postgres + microservice + frontend
+- **Nginx** — reverse proxy, rate limiting, security headers
+- **Terraform** — trilha EC2 simples e trilha enterprise ECS/Fargate
+- **AWS**: EC2, RDS, ECS Fargate, ALB, CloudFront, WAF, Secrets Manager, KMS, GuardDuty, Security Hub, CloudTrail
 
-### .NET Backend (Enterprise)
-- C# .NET 8, Clean Architecture
-- Entity Framework Core, FluentValidation
-- CQRS pattern, MediatR
+### CI/CD
+- **GitHub Actions**: lint/type-check/build (frontend), syntax check (microservice), dotnet build/test (.NET), CodeQL (JS + C#), Trivy, Gitleaks
 
-## 💻 Como Rodar
+## Como Rodar
 
 ### Pré-requisitos
 - Docker e Docker Compose
-- Node.js 20+ (opcional para dev local)
+- Node.js 20+ (dev local)
+- .NET 8 SDK (backend enterprise)
 
-### Iniciar com Docker
+### Docker (recomendado)
 ```bash
-# 1. Clonar repositório
-git clone https://github.com/Lucasantunesribeiro/smartfinance.git
-cd smartfinance
+git clone https://github.com/Lucasantunesribeiro/smart_finance.git
+cd smart_finance
 
-# 2. Configurar variáveis de ambiente
 cp .env.example .env
-# Editar .env com suas credenciais
+# Configure DATABASE_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET, JWT_SECRET_KEY
 
-# 3. Subir aplicação
 docker compose up -d
 
-# 4. Acessar
 # Frontend: http://localhost:3000
-# API: http://localhost:5000/api/v1
+# API:      http://localhost:5000/api/v1
+# Docs:     http://localhost:5000/docs
 ```
 
-### Desenvolvimento Local (Frontend)
+**Credenciais de teste (seed):**
+- Email: `admin@smartfinance.com` / Senha: `admin123`
+
+### Frontend (dev local)
 ```bash
-cd frontend
-npm install
-npm run dev
+cd frontend && npm install && npm run dev
 ```
 
-### Desenvolvimento Local (Microservice)
+### Microservice Node.js (dev local)
 ```bash
-cd microservice
-npm install
-npm run dev
+cd microservice && npm install
+npm run db:migrate   # roda migrations
+npm run db:seed      # popula dados demo
+npm run dev          # hot reload
 ```
 
-## 📁 Estrutura
+### Backend .NET
+```bash
+cd backend
+dotnet build SmartFinance.sln
+dotnet run --project src/SmartFinance.WebApi
+# Swagger: http://localhost:5000
+```
+
+## Estrutura
 
 ```
 smartfinance/
-├── frontend/              # Next.js 14 + TypeScript
-├── microservice/          # Node.js API + PostgreSQL
-├── backend/               # .NET 8 (Clean Architecture)
+├── frontend/                  # Next.js 14
+│   └── src/
+│       ├── app/               # App Router (/, /login, /dashboard)
+│       ├── components/        # Dashboard, dialogs, analytics
+│       ├── hooks/             # useAuth, useCategories, useSignalR
+│       └── services/          # axios wrappers por domínio
+├── microservice/              # Node.js API (runtime principal)
+│   ├── server.js              # HTTP server + rotas
+│   ├── handlers.js            # auth + transactions
+│   ├── handlers-extended.js   # accounts, categories, budgets, analytics
+│   ├── store.js               # acesso ao PostgreSQL
+│   ├── validation.js          # schemas Joi
+│   └── db/migrations/         # SQL incrementais
+├── backend/                   # .NET 8 enterprise
+│   └── src/
+│       ├── SmartFinance.Domain/
+│       ├── SmartFinance.Application/
+│       ├── SmartFinance.Infrastructure/
+│       └── SmartFinance.WebApi/
 ├── infrastructure/
-│   └── terraform-enterprise/  # AWS IaC
-├── nginx/                 # Reverse proxy configs
-└── docker-compose.yml     # Orquestração de containers
+│   ├── aws-free-tier/         # EC2 + Docker Compose
+│   └── terraform-enterprise/  # ECS Fargate + RDS + WAF
+├── nginx/                     # configs de reverse proxy
+└── docker-compose.yml
 ```
 
-## 🔒 Segurança
-
-- JWT access (15min) + refresh tokens (7 dias)
-- Bcrypt password hashing (10 rounds)
-- CSRF protection, rate limiting
-- Input validation, SQL injection protection
-- CSP headers, CORS configurado
-
-## 📈 Arquitetura
-
-### Produção Atual (EC2 Free Tier)
-```
-Internet → Nginx :80 → Frontend :3000
-                    → Backend :5000 → PostgreSQL :5432
-```
-
-### Enterprise (Terraform IaC)
-```
-CloudFront → ALB → ECS Fargate → RDS PostgreSQL
-                              → ElastiCache Redis
-           WAF (proteção)
-```
-
-## 🌟 Conquistas Técnicas
-
-- ✅ Migração zero-downtime de ECS para EC2
-- ✅ Otimização de memória: 87MB em 1GB disponível
-- ✅ Infraestrutura como código com Terraform
-- ✅ CI/CD automatizado com GitHub Actions
-- ✅ Arquitetura de microserviços
-- ✅ Clean Architecture no backend .NET
-
-## 📝 Variáveis de Ambiente
+## Variáveis de Ambiente
 
 ```env
-# Backend
-DATABASE_URL=postgresql://user:pass@localhost:5432/db
-JWT_ACCESS_SECRET=your-secret
-JWT_REFRESH_SECRET=your-secret
-JWT_SECRET_KEY=your-secret
+# Obrigatórias
+DATABASE_URL=postgresql://user:pass@localhost:5432/smartfinance
+JWT_ACCESS_SECRET=mínimo-32-caracteres
+JWT_REFRESH_SECRET=mínimo-32-caracteres
+JWT_SECRET_KEY=mínimo-32-caracteres
 
-# Frontend
-NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
-NEXT_PUBLIC_SIGNALR_URL=http://localhost:5000/financehub
+# Opcionais
+ALLOWED_ORIGINS=http://localhost:3000
+AUTO_MIGRATE=true
+SEED_DEMO_DATA=true
+NEXT_PUBLIC_API_URL=/api/v1
 ```
 
 Ver `.env.example` para configuração completa.
 
-## 🚀 Deploy
+## Deploy
 
-### AWS EC2 (Produção Atual)
+### AWS EC2 (atual)
 ```bash
-# 1. Upload código
-scp -r . ubuntu@ip:/opt/smartfinance
-
-# 2. Build e iniciar
-docker compose up -d --build
-
-# 3. Configurar Nginx
-sudo systemctl restart nginx
+scp -r . ubuntu@<ip>:/opt/smartfinance
+ssh ubuntu@<ip> "cd /opt/smartfinance && docker compose up -d --build"
 ```
 
-### Terraform (Enterprise)
+### Terraform Enterprise
 ```bash
 cd infrastructure/terraform-enterprise
-terraform init
-terraform plan
-terraform apply
+terraform init && terraform plan && terraform apply
 ```
 
-## 📊 Performance
+## Segurança
+
+- JWT access tokens (15min) + refresh tokens (7d) com rotation
+- Cookies HttpOnly (`sf_at`, `sf_rt`) + CSRF token obrigatório em mutações
+- Rate limiting por IP e por usuário autenticado
+- Input validation com Joi (Node.js) e FluentValidation (.NET)
+- SQL parametrizado em todas as queries (sem ORM raw strings)
+- CSP headers, CORS configurado, `server_tokens off` no Nginx
+- Sem endpoints de debug ou logging de credenciais no código
+
+## Performance
 
 | Métrica | Valor |
 |---------|-------|
-| Memory Usage | 87MB / 1GB |
-| Response Time | < 200ms |
-| Uptime | 100% |
-| Cost/Month | $0 (Free Tier) |
+| Memory (microservice) | ~87 MB / 1 GB |
+| Response time (p95) | < 200 ms |
+| Cost/month (EC2 Free Tier) | $0 |
 
-## 🔗 Links
-
-- [Demo Live](http://3.223.37.57)
-- [Documentação API](http://3.223.37.57/api/v1/docs)
-
-## 📄 Licença
+## Licença
 
 MIT © 2026
-
----
-
-**Desenvolvido com foco em performance, segurança e otimização de custos**
