@@ -101,6 +101,11 @@ public class SmartFinanceDbContext : DbContext
             entity.Property(e => e.CreatedBy).HasMaxLength(100);
             entity.Property(e => e.UpdatedBy).HasMaxLength(100);
 
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.Categories)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             entity.HasOne(e => e.Parent)
                 .WithMany(c => c.Children)
                 .HasForeignKey(e => e.ParentId)

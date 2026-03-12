@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'javascript' ]
+        language: [ 'javascript', 'csharp' ]
     steps:
       - uses: actions/checkout@v4
       - uses: github/codeql-action/init@v3

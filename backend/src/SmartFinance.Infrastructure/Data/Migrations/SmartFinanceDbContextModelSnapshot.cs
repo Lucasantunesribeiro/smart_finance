@@ -267,9 +267,14 @@ namespace SmartFinance.Infrastructure.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ParentId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Categories");
 
@@ -671,7 +676,14 @@ namespace SmartFinance.Infrastructure.Data.Migrations
                         .HasForeignKey("ParentId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("SmartFinance.Domain.Entities.User", "User")
+                        .WithMany("Categories")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Parent");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("SmartFinance.Domain.Entities.Report", b =>
@@ -739,6 +751,8 @@ namespace SmartFinance.Infrastructure.Data.Migrations
                     b.Navigation("Children");
 
                     b.Navigation("Transactions");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("SmartFinance.Domain.Entities.Transaction", b =>
@@ -751,6 +765,8 @@ namespace SmartFinance.Infrastructure.Data.Migrations
                     b.Navigation("Accounts");
 
                     b.Navigation("Budgets");
+
+                    b.Navigation("Categories");
 
                     b.Navigation("Reports");
 

@@ -43,7 +43,9 @@ public class CategoriesController : ControllerBase
             if (pageSize < 1) pageSize = 1;
             if (pageSize > 100) pageSize = 100;
 
-            var query = _context.Categories.AsNoTracking();
+            Guid? userGuid = Guid.TryParse(userId, out var parsedUserId) ? parsedUserId : null;
+            var query = _context.Categories.AsNoTracking()
+                .Where(c => c.UserId == null || c.UserId == userGuid);
 
             if (isActive.HasValue)
             {
@@ -219,7 +221,8 @@ public class CategoriesController : ControllerBase
                 parentId = parsedParentId;
             }
 
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "system";
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "system";
+            Guid? userGuid = Guid.TryParse(userIdStr, out var parsedUserGuid) ? parsedUserGuid : null;
 
             var category = new Category
             {
@@ -230,8 +233,9 @@ public class CategoriesController : ControllerBase
                 Icon = request.icon,
                 ParentId = parentId,
                 IsActive = true,
-                CreatedBy = userId,
-                UpdatedBy = userId
+                UserId = userGuid,
+                CreatedBy = userIdStr,
+                UpdatedBy = userIdStr
             };
 
             _context.Categories.Add(category);

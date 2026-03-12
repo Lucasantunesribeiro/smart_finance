@@ -17,6 +17,7 @@ public class User : BaseAuditableEntity
     
     public virtual ICollection<Account> Accounts { get; set; } = new List<Account>();
     public virtual ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
+    public virtual ICollection<Category> Categories { get; set; } = new List<Category>();
     public virtual ICollection<Budget> Budgets { get; set; } = new List<Budget>();
     public virtual ICollection<Report> Reports { get; set; } = new List<Report>();
 }
@@ -67,7 +68,9 @@ public class Category : BaseAuditableEntity
     public bool IsActive { get; set; } = true;
     public Guid? ParentId { get; set; }
     public CategoryType Type { get; set; }
-    
+    public Guid? UserId { get; set; }
+
+    public virtual User? User { get; set; }
     public virtual Category? Parent { get; set; }
     public virtual ICollection<Category> Children { get; set; } = new List<Category>();
     public virtual ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();

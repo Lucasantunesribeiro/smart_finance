@@ -37,7 +37,7 @@ jobs:
           NEXT_PUBLIC_SIGNALR_URL: /financehub
           NEXT_PUBLIC_PAYMENT_SERVICE_URL: /payment
 
-  backend:
+  microservice:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,3 +53,21 @@ jobs:
       - name: Syntax check
         run: node --check server.js
         working-directory: microservice
+
+  dotnet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Restore dependencies
+        run: dotnet restore SmartFinance.sln
+        working-directory: backend
+      - name: Build
+        run: dotnet build SmartFinance.sln --no-restore --configuration Release
+        working-directory: backend
+      - name: Test
+        run: dotnet test SmartFinance.sln --no-build --configuration Release --verbosity normal
+        working-directory: backend

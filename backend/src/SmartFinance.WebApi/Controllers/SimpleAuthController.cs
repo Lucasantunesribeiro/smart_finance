@@ -31,9 +31,6 @@ public class SimpleAuthController : ControllerBase
             string email = loginData.GetProperty("email").GetString() ?? "";
             string password = loginData.GetProperty("password").GetString() ?? "";
             
-            // Debug logging
-            Console.WriteLine($"Received login request: Email={email}, Password={password}");
-            
             // Basic validation - for development only
             if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
             {
