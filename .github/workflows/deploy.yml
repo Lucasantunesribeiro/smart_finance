@@ -37,7 +37,7 @@ jobs:
             git reset --hard origin/main
 
             docker compose --project-directory . -f infrastructure/aws-free-tier/docker-compose.ec2.yml build
-            docker compose --project-directory . -f infrastructure/aws-free-tier/docker-compose.ec2.yml up -d
+            docker compose --project-directory . -f infrastructure/aws-free-tier/docker-compose.ec2.yml up -d --remove-orphans
 
             echo "=== Container Status ==="
             docker compose --project-directory . -f infrastructure/aws-free-tier/docker-compose.ec2.yml ps
