@@ -69,6 +69,10 @@ builder.Services.AddDbContext<SmartFinanceDbContext>(options =>
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IBudgetService, BudgetService>();
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(SmartFinance.Application.AssemblyReference.Assembly));
 
