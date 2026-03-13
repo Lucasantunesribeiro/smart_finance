@@ -10,8 +10,8 @@ Parameters:
   
   AllowedSSHIP:
     Type: String
-    Description: 'IP address allowed for SSH access (use 0.0.0.0/0 for any IP)'
-    Default: '0.0.0.0/0'
+    Description: 'Trusted CIDR allowed for SSH access (prefer /32 for your IP)'
+    Default: '203.0.113.10/32'
 
 Resources:
   # VPC - Free tier eligible
@@ -104,22 +104,6 @@ Resources:
           ToPort: 443
           CidrIp: 0.0.0.0/0
           Description: 'HTTPS access'
-        # Application ports
-        - IpProtocol: tcp
-          FromPort: 3000
-          ToPort: 3000
-          CidrIp: 0.0.0.0/0
-          Description: 'Next.js frontend'
-        - IpProtocol: tcp
-          FromPort: 5000
-          ToPort: 5000
-          CidrIp: 0.0.0.0/0
-          Description: '.NET backend'
-        - IpProtocol: tcp
-          FromPort: 5001
-          ToPort: 5001
-          CidrIp: 0.0.0.0/0
-          Description: 'Payment service'
         - IpProtocol: tcp
           FromPort: 27017
           ToPort: 27017

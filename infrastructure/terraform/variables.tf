@@ -28,6 +28,12 @@ variable "ssh_public_key" {
   default     = ""
 }
 
+variable "allowed_ssh_cidr" {
+  description = "Trusted CIDR allowed to reach the EC2 instance over SSH"
+  type        = string
+  default     = "203.0.113.10/32"
+}
+
 variable "project_name" {
   description = "Name of the project"
   type        = string

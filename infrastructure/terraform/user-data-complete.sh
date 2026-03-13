@@ -32,27 +32,44 @@ chown ubuntu:ubuntu /opt/smartfinance
 cd /opt/smartfinance
 git clone https://github.com/lucasantunesribeiro/smart_finance.git .
 
+generate_secret() {
+  openssl rand -hex 32
+}
+
+POSTGRES_PASSWORD="$(generate_secret)"
+RABBITMQ_PASSWORD="$(generate_secret)"
+JWT_SECRET_KEY="$(generate_secret)"
+
 # Create production environment file
 cat > .env.production << 'EOF'
 NODE_ENV=production
 ASPNETCORE_ENVIRONMENT=Production
 
-SQL_PASSWORD=SmartFinance_SQL_2024!
-MONGO_PASSWORD=SmartFinance_Mongo_2024!
-REDIS_PASSWORD=SmartFinance_Redis_2024!
+POSTGRES_DB=smartfinance
+POSTGRES_USER=smartfinance
+POSTGRES_PASSWORD=__POSTGRES_PASSWORD__
+RABBITMQ_USER=smartfinance
+RABBITMQ_PASSWORD=__RABBITMQ_PASSWORD__
 
-JWT_SECRET=SmartFinance_JWT_Secret_Key_2024_32_Chars_Long!
+JWT_SECRET_KEY=__JWT_SECRET_KEY__
 JWT_ISSUER=SmartFinance
 JWT_AUDIENCE=SmartFinanceUsers
 
 NEXT_PUBLIC_API_URL=/api/v1
 NEXT_PUBLIC_SIGNALR_URL=/financehub
-NEXT_PUBLIC_PAYMENT_SERVICE_URL=/payment
+NEXT_PUBLIC_PAYMENT_API_URL=/api/v1/payments
 
-ConnectionStrings__DefaultConnection=Data Source=smartfinance.db
-ConnectionStrings__RedisConnection=redis:6379,password=SmartFinance_Redis_2024!
-ConnectionStrings__MongoConnection=mongodb://admin:SmartFinance_Mongo_2024!@mongodb:27017/smartfinance_logs?authSource=admin
+DATABASE_URL=postgres://smartfinance:__POSTGRES_PASSWORD__@postgres:5432/smartfinance
+DB_SSL=false
+COOKIE_SECURE=true
+COOKIE_SAMESITE=Lax
+Messaging__RabbitMq__ConnectionUri=amqp://smartfinance:__RABBITMQ_PASSWORD__@rabbitmq:5672
 EOF
+
+sed -i "s/__POSTGRES_PASSWORD__/${POSTGRES_PASSWORD}/g" .env.production
+sed -i "s/__RABBITMQ_PASSWORD__/${RABBITMQ_PASSWORD}/g" .env.production
+sed -i "s/__JWT_SECRET_KEY__/${JWT_SECRET_KEY}/g" .env.production
+chmod 600 .env.production
 
 # Set permissions
 chown -R ubuntu:ubuntu /opt/smartfinance
@@ -128,6 +145,5 @@ systemctl enable smartfinance.service
 
 echo "SmartFinance setup completed at $(date)"
 echo "Application should be available at:"
-echo "- Frontend: http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)"
-echo "- Backend: http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4):5000"
-echo "- Payment Service: http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4):3001"
+echo "- Reverse proxy: http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)"
+echo "- Backend is intentionally bound to localhost behind the proxy"

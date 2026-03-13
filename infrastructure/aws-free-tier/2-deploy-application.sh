@@ -263,6 +263,7 @@ JWT_ACCESS_SECRET=$(generate_secret)
 JWT_REFRESH_SECRET=$(generate_secret)
 JWT_SECRET_KEY=$(generate_secret)
 DB_PASSWORD=$(generate_secret)
+RABBITMQ_PASSWORD=$(generate_secret)
 
 log_info "Secrets gerados"
 
@@ -281,6 +282,8 @@ DB_SSL=false
 POSTGRES_DB=smartfinance
 POSTGRES_USER=smartfinance
 POSTGRES_PASSWORD=${DB_PASSWORD}
+RABBITMQ_USER=smartfinance
+RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
 
 # JWT Secrets
 JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
@@ -297,11 +300,12 @@ SEED_DEMO_DATA=false
 TRUST_PROXY=true
 COOKIE_SECURE=false
 COOKIE_SAMESITE=Lax
+RABBITMQ_CONNECTION_URI=amqp://smartfinance:${RABBITMQ_PASSWORD}@rabbitmq:5672
 
 # URLs (será atualizado com domínio real se configurar)
 NEXT_PUBLIC_API_URL=http://${ELASTIC_IP}/api/v1
 NEXT_PUBLIC_SIGNALR_URL=http://${ELASTIC_IP}/financehub
-NEXT_PUBLIC_PAYMENT_API_URL=http://${ELASTIC_IP}/payment
+NEXT_PUBLIC_PAYMENT_API_URL=http://${ELASTIC_IP}/api/v1/payments
 ALLOWED_ORIGINS=http://${ELASTIC_IP},http://localhost:3000
 EOF
 
@@ -342,9 +346,34 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  microservice:
+  rabbitmq:
+    image: rabbitmq:3.13-alpine
+    container_name: smartfinance_rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - smartfinance_network
+    mem_limit: 160m
+    mem_reservation: 96m
+    cpus: 0.2
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  backend:
     build:
-      context: ./microservice
+      context: ./backend
       dockerfile: Dockerfile
     image: smartfinance-backend:latest
     container_name: smartfinance_backend
@@ -352,24 +381,29 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     ports:
       - '127.0.0.1:5000:5000'
     environment:
-      NODE_ENV: production
-      PORT: 5000
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5000
       DATABASE_URL: ${DATABASE_URL}
       DB_SSL: ${DB_SSL}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
       JWT_ISSUER: ${JWT_ISSUER}
       JWT_AUDIENCE: ${JWT_AUDIENCE}
-      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
-      AUTO_MIGRATE: ${AUTO_MIGRATE}
-      SEED_DEMO_DATA: ${SEED_DEMO_DATA}
-      TRUST_PROXY: ${TRUST_PROXY}
       COOKIE_SECURE: ${COOKIE_SECURE}
       COOKIE_SAMESITE: ${COOKIE_SAMESITE}
+      Messaging__RabbitMq__Enabled: 'true'
+      Messaging__RabbitMq__ConnectionUri: ${RABBITMQ_CONNECTION_URI}
+      Messaging__RabbitMq__PrefetchCount: 1
+      Messaging__RabbitMq__PublisherBatchSize: 20
+      Messaging__RabbitMq__PublisherPollIntervalSeconds: 5
+      Messaging__RabbitMq__ConsumerMaxRetries: 3
+      Messaging__RabbitMq__PublisherMaxRetries: 5
+      Messaging__RabbitMq__RetryDelaySeconds: 30
     networks:
       - smartfinance_network
     mem_limit: 300m
@@ -391,19 +425,23 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - NODE_ENV=production
+        - NEXT_PUBLIC_API_URL=/api/v1
+        - NEXT_PUBLIC_SIGNALR_URL=/financehub
+        - NEXT_PUBLIC_PAYMENT_API_URL=/api/v1/payments
+        - BACKEND_URL=http://backend:5000
     image: smartfinance-frontend:latest
     container_name: smartfinance_frontend
     restart: unless-stopped
     depends_on:
-      - microservice
+      - backend
     ports:
       - '127.0.0.1:3000:3000'
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-      NEXT_PUBLIC_SIGNALR_URL: ${NEXT_PUBLIC_SIGNALR_URL}
-      NEXT_PUBLIC_PAYMENT_API_URL: ${NEXT_PUBLIC_PAYMENT_API_URL}
+      NEXT_PUBLIC_API_URL: /api/v1
+      NEXT_PUBLIC_SIGNALR_URL: /financehub
+      NEXT_PUBLIC_PAYMENT_API_URL: /api/v1/payments
+      BACKEND_URL: http://backend:5000
     networks:
       - smartfinance_network
     mem_limit: 200m
@@ -426,6 +464,8 @@ networks:
 
 volumes:
   postgres_data:
+    driver: local
+  rabbitmq_data:
     driver: local
 EOF
 

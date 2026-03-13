@@ -5,20 +5,20 @@ services:
     image: postgres:15
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-smartfinance}
-      POSTGRES_USER: ${POSTGRES_USER:-smartfinance}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smartfinance}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - '5432:5432'
+      - '127.0.0.1:5432:5432'
 
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     restart: unless-stopped
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-smartfinance}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-smartfinance-rabbit}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?RABBITMQ_USER is required}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
     ports:
       - '127.0.0.1:5672:5672'
       - '127.0.0.1:15672:15672'
@@ -36,20 +36,20 @@ services:
       - postgres
       - rabbitmq
     ports:
-      - '5000:5000'
+      - '127.0.0.1:5000:5000'
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ASPNETCORE_URLS: http://+:5000
-      DATABASE_URL: postgres://${POSTGRES_USER:-smartfinance}:${POSTGRES_PASSWORD:-smartfinance}@postgres:5432/${POSTGRES_DB:-smartfinance}
+      DATABASE_URL: postgres://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:?POSTGRES_DB is required}
       DB_SSL: 'false'
-      ALLOWED_ORIGINS: http://localhost:3000
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
       JWT_ISSUER: ${JWT_ISSUER:-SmartFinance}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-SmartFinanceUsers}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-this-jwt-secret-before-production-use}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
       COOKIE_SECURE: 'false'
       COOKIE_SAMESITE: Lax
       Messaging__RabbitMq__Enabled: 'true'
-      Messaging__RabbitMq__ConnectionUri: amqp://${RABBITMQ_USER:-smartfinance}:${RABBITMQ_PASSWORD:-smartfinance-rabbit}@rabbitmq:5672
+      Messaging__RabbitMq__ConnectionUri: amqp://${RABBITMQ_USER:?RABBITMQ_USER is required}:${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}@rabbitmq:5672
       Messaging__RabbitMq__PrefetchCount: 1
       Messaging__RabbitMq__PublisherBatchSize: 20
       Messaging__RabbitMq__PublisherPollIntervalSeconds: 5
@@ -69,7 +69,7 @@ services:
     depends_on:
       - backend
     ports:
-      - '3000:3000'
+      - '127.0.0.1:3000:3000'
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: /api/v1

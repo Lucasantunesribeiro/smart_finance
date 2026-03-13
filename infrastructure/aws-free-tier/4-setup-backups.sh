@@ -409,7 +409,7 @@ DB_PASSWORD=$(grep POSTGRES_PASSWORD .env | cut -d '=' -f2)
 
 # Parar aplicação
 log_info "Parando containers da aplicação..."
-docker compose stop frontend microservice
+docker compose stop frontend backend
 
 # Aguardar conexões fecharem
 sleep 5
@@ -421,13 +421,13 @@ if gunzip -c "$BACKUP_DIR/$BACKUP_FILE" | docker exec -i smartfinance_postgres p
 else
     log_error "Falha ao restaurar backup"
     log_warn "Iniciando containers novamente..."
-    docker compose start microservice frontend
+    docker compose start backend frontend
     exit 1
 fi
 
 # Reiniciar aplicação
 log_info "Reiniciando aplicação..."
-docker compose start microservice frontend
+docker compose start backend frontend
 
 # Aguardar containers ficarem healthy
 sleep 10

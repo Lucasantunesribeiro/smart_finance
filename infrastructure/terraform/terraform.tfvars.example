@@ -3,12 +3,13 @@
 
 aws_region    = "us-east-1"
 environment   = "production"
-instance_type = "t3.medium"
+instance_type = "t3.micro"
+allowed_ssh_cidr = "203.0.113.10/32"
 
 # Generate SSH key pair:
 # ssh-keygen -t rsa -b 4096 -f ~/.ssh/smartfinance_key
 # Then paste the content of ~/.ssh/smartfinance_key.pub below
-public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC... your-public-key-here"
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC... your-public-key-here"
 
 # Optional: Custom domain name
 domain_name = "smartfinance.yourdomain.com"

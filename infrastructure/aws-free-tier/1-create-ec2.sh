@@ -22,6 +22,7 @@ AMI_ID=""  # Será detectado automaticamente (Ubuntu 22.04 LTS)
 KEY_NAME="${PROJECT_NAME}-key"
 SECURITY_GROUP_NAME="${PROJECT_NAME}-sg"
 VOLUME_SIZE=20  # GB - Free Tier: até 30 GB
+SSH_ALLOWED_CIDR="${SSH_ALLOWED_CIDR:-$(curl -fsSL https://checkip.amazonaws.com | tr -d '\n')/32}"
 
 # Cores para output
 RED='\033[0;31m'
@@ -56,6 +57,7 @@ fi
 
 log_info "AWS Account ID: $(aws sts get-caller-identity --query Account --output text)"
 log_info "Região: $REGION"
+log_info "SSH restrito para: $SSH_ALLOWED_CIDR"
 
 # ============================================================================
 # 1. Detectar AMI Ubuntu 22.04 LTS mais recente
@@ -154,14 +156,13 @@ else
         --cidr 0.0.0.0/0 \
         --tag-specifications "ResourceType=security-group-rule,Tags=[{Key=Name,Value=HTTPS}]" || true
 
-    # SSH (22) - ATENÇÃO: Restrinja ao seu IP em produção!
-    log_warn "SSH (22) aberto para 0.0.0.0/0 - RESTRINJA ao seu IP em produção!"
+    # SSH (22) - restrito ao CIDR informado/detectado
     aws ec2 authorize-security-group-ingress \
         --region "$REGION" \
         --group-id "$SG_ID" \
         --protocol tcp \
         --port 22 \
-        --cidr 0.0.0.0/0 \
+        --cidr "$SSH_ALLOWED_CIDR" \
         --tag-specifications "ResourceType=security-group-rule,Tags=[{Key=Name,Value=SSH}]" || true
 fi
 

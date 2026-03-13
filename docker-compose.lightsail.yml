@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_DB: smartfinance
       POSTGRES_USER: smartfinance
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -21,33 +21,57 @@ services:
       timeout: 5s
       retries: 5
 
-  microservice:
+  rabbitmq:
+    image: rabbitmq:3.13-alpine
+    container_name: smartfinance_rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-smartfinance}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - smartfinance_network
+    mem_limit: 160m
+    cpus: 0.2
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  backend:
     build:
-      context: ./microservice
+      context: ./backend
       dockerfile: Dockerfile
     container_name: smartfinance_backend
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     ports:
-      - '5000:5000'
+      - '127.0.0.1:5000:5000'
     environment:
-      NODE_ENV: production
-      PORT: '5000'
-      DATABASE_URL: postgres://smartfinance:${DB_PASSWORD}@postgres:5432/smartfinance
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5000
+      DATABASE_URL: postgres://smartfinance:${POSTGRES_PASSWORD}@postgres:5432/smartfinance
       DB_SSL: 'false'
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
       JWT_ISSUER: SmartFinance
       JWT_AUDIENCE: SmartFinanceUsers
-      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
-      AUTO_MIGRATE: 'true'
-      SEED_DEMO_DATA: 'false'
-      TRUST_PROXY: 'true'
       COOKIE_SECURE: 'true'
       COOKIE_SAMESITE: Lax
+      Messaging__RabbitMq__Enabled: 'true'
+      Messaging__RabbitMq__ConnectionUri: amqp://${RABBITMQ_USER:-smartfinance}:${RABBITMQ_PASSWORD}@rabbitmq:5672
+      Messaging__RabbitMq__PrefetchCount: 1
+      Messaging__RabbitMq__PublisherBatchSize: 20
+      Messaging__RabbitMq__PublisherPollIntervalSeconds: 5
+      Messaging__RabbitMq__ConsumerMaxRetries: 3
+      Messaging__RabbitMq__PublisherMaxRetries: 5
+      Messaging__RabbitMq__RetryDelaySeconds: 30
     networks:
       - smartfinance_network
     mem_limit: 300m
@@ -57,25 +81,28 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-    command: ["node", "server.js"]
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - NODE_ENV=production
+        - NEXT_PUBLIC_API_URL=/api/v1
+        - NEXT_PUBLIC_SIGNALR_URL=/financehub
+        - NEXT_PUBLIC_PAYMENT_API_URL=/api/v1/payments
+        - BACKEND_URL=http://backend:5000
     container_name: smartfinance_frontend
     restart: unless-stopped
     depends_on:
-      - microservice
+      - backend
     ports:
-      - '3000:3000'
+      - '127.0.0.1:3000:3000'
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-      NEXT_PUBLIC_SIGNALR_URL: ${NEXT_PUBLIC_SIGNALR_URL}
-      NEXT_PUBLIC_PAYMENT_API_URL: ${NEXT_PUBLIC_PAYMENT_API_URL}
+      NEXT_PUBLIC_API_URL: /api/v1
+      NEXT_PUBLIC_SIGNALR_URL: /financehub
+      NEXT_PUBLIC_PAYMENT_API_URL: /api/v1/payments
+      BACKEND_URL: http://backend:5000
     networks:
       - smartfinance_network
     mem_limit: 200m
@@ -92,4 +119,6 @@ networks:
 
 volumes:
   postgres_data:
+    driver: local
+  rabbitmq_data:
     driver: local

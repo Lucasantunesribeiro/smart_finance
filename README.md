@@ -1,6 +1,6 @@
 # SmartFinance
 
-> Plataforma full-stack de gestão financeira pessoal com backend Node.js operacional e backend .NET 8 enterprise
+> Plataforma full-stack de gestão financeira pessoal com frontend Next.js e backend .NET 8 como trilha canônica de produção
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-000?logo=next.js&logoColor=white)](https://nextjs.org/)
@@ -10,13 +10,13 @@
 
 ## Visão Geral
 
-SmartFinance cobre o ciclo completo de um produto SaaS financeiro: autenticação JWT, segregação de dados por usuário, contas, transações, categorias, orçamentos e analytics. O repositório mantém duas trilhas de backend coexistindo intencionalmente como demonstração de amplitude técnica.
+SmartFinance cobre o ciclo completo de um produto SaaS financeiro: autenticação segura, segregação de dados por usuário, contas, transações, categorias, orçamentos, analytics e mensageria assíncrona. O backend .NET 8 é a implementação principal do produto; o microserviço Node.js permanece como bounded context isolado para pagamentos e integrações especializadas.
 
 | Camada | Tecnologia | Status |
 |--------|-----------|--------|
 | Frontend | Next.js 14, React 18, TypeScript, TailwindCSS, shadcn/ui | Produção |
-| Backend operacional | Node.js (HTTP nativo), PostgreSQL 15, JWT | Produção |
-| Backend enterprise | .NET 8, Clean Architecture, CQRS/MediatR, EF Core | Portfólio |
+| Backend principal | .NET 8, Clean Architecture, CQRS/MediatR, EF Core, RabbitMQ | Produção |
+| Microserviço isolado | Node.js/TypeScript, Bull/Redis, MongoDB | Suporte a pagamentos |
 | Infraestrutura | AWS EC2 + Docker Compose (atual) / ECS Fargate + RDS (Terraform) | Ambos |
 
 ## Funcionalidades
@@ -37,20 +37,20 @@ SmartFinance cobre o ciclo completo de um produto SaaS financeiro: autenticaçã
 - **TanStack Query** (server state), **Axios**
 - **Recharts** (gráficos), **date-fns**
 
-### Backend operacional (Node.js)
-- HTTP nativo sem framework — roteador customizado `SmartRouter`
-- **PostgreSQL 15** via `pg` com SQL parametrizado
-- **JWT** (access 15min + refresh 7d), **bcryptjs**, CSRF, rate limiting por IP/usuário
-- Migrations incrementais em `db/migrations/`
-
-### Backend enterprise (.NET 8)
+### Backend principal (.NET 8)
 - **Clean Architecture** (Domain → Application → Infrastructure → WebApi)
 - **CQRS** com **MediatR** (Auth + Transactions end-to-end; Analytics com queries EF Core reais)
 - **Entity Framework Core** (PostgreSQL prod / SQLite dev)
 - **FluentValidation**, **Serilog**, **Swagger**, **SignalR**
+- **RabbitMQ**, **Outbox Pattern**, idempotência no consumer e política de retry/DLQ
+
+### Microserviço complementar (Node.js/TypeScript)
+- Contexto isolado de pagamentos e banking
+- **Bull + Redis**, **MongoDB**, **JWT**, **Winston**
+- Mantido fora do fluxo principal do produto para preservar a arquitetura canônica em .NET
 
 ### Infraestrutura
-- **Docker Compose** — postgres + microservice + frontend
+- **Docker Compose** — postgres + rabbitmq + backend .NET + frontend
 - **Nginx** — reverse proxy, rate limiting, security headers
 - **Terraform** — trilha EC2 simples e trilha enterprise ECS/Fargate
 - **AWS**: EC2, RDS, ECS Fargate, ALB, CloudFront, WAF, Secrets Manager, KMS, GuardDuty, Security Hub, CloudTrail
@@ -63,7 +63,7 @@ SmartFinance cobre o ciclo completo de um produto SaaS financeiro: autenticaçã
 ### Pré-requisitos
 - Docker e Docker Compose
 - Node.js 20+ (dev local)
-- .NET 8 SDK (backend enterprise)
+- .NET 8 SDK (backend principal)
 
 ### Docker (recomendado)
 ```bash
@@ -81,7 +81,7 @@ docker compose up -d
 ```
 
 **Credenciais de teste (seed):**
-- Email: `admin@smartfinance.com` / Senha: `admin123`
+- Email: `test@smartfinance.com` / Senha: `SmartFinance123!`
 
 ### Frontend (dev local)
 ```bash
@@ -114,14 +114,12 @@ smartfinance/
 │       ├── components/        # Dashboard, dialogs, analytics
 │       ├── hooks/             # useAuth, useCategories, useSignalR
 │       └── services/          # axios wrappers por domínio
-├── microservice/              # Node.js API (runtime principal)
-│   ├── server.js              # HTTP server + rotas
-│   ├── handlers.js            # auth + transactions
-│   ├── handlers-extended.js   # accounts, categories, budgets, analytics
-│   ├── store.js               # acesso ao PostgreSQL
-│   ├── validation.js          # schemas Joi
-│   └── db/migrations/         # SQL incrementais
-├── backend/                   # .NET 8 enterprise
+├── microservice/              # Node.js/TypeScript para pagamentos isolados
+│   ├── src/routes/            # rotas de pagamentos e banking
+│   ├── src/services/          # filas, fraude e integração bancária
+│   ├── src/models/            # documentos MongoDB
+│   └── tests/                 # testes unitários e de rotas
+├── backend/                   # .NET 8 principal
 │   └── src/
 │       ├── SmartFinance.Domain/
 │       ├── SmartFinance.Application/
@@ -138,7 +136,11 @@ smartfinance/
 
 ```env
 # Obrigatórias
-DATABASE_URL=postgresql://user:pass@localhost:5432/smartfinance
+POSTGRES_DB=smartfinance
+POSTGRES_USER=smartfinance
+POSTGRES_PASSWORD=mínimo-16-caracteres
+RABBITMQ_USER=smartfinance
+RABBITMQ_PASSWORD=mínimo-16-caracteres
 JWT_ACCESS_SECRET=mínimo-32-caracteres
 JWT_REFRESH_SECRET=mínimo-32-caracteres
 JWT_SECRET_KEY=mínimo-32-caracteres

@@ -55,7 +55,7 @@ echo "Backup de segurança salvo em: $SAFETY_BACKUP"
 
 # Parar aplicação para evitar conexões ativas
 echo "Parando containers da aplicação..."
-docker-compose -f /home/ubuntu/smartfinance/docker-compose.lightsail.yml stop frontend microservice
+docker-compose -f /home/ubuntu/smartfinance/docker-compose.lightsail.yml stop frontend backend
 
 # Restaurar backup
 echo "Restaurando banco de dados..."
