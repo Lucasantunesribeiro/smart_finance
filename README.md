@@ -78,6 +78,15 @@ docker compose up -d
 # Frontend: http://localhost:3000
 # API:      http://localhost:5000/api/v1
 # Docs:     http://localhost:5000/docs
+# Metrics:  http://localhost:5000/metrics
+```
+
+### Observabilidade local
+```bash
+docker compose --env-file .env.example --profile observability up -d prometheus grafana
+
+# Prometheus: http://localhost:9090
+# Grafana:    http://localhost:3002
 ```
 
 **Credenciais de teste (seed):**

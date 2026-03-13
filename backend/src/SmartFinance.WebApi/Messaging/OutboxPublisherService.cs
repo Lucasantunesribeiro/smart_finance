@@ -1,9 +1,11 @@
+using System.Diagnostics;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using SmartFinance.Domain.Constants;
 using SmartFinance.Infrastructure.Data;
+using SmartFinance.WebApi.Observability;
 
 namespace SmartFinance.WebApi.Messaging;
 
@@ -85,8 +87,20 @@ public sealed class OutboxPublisherService : BackgroundService
 
         foreach (var message in messages)
         {
+            var status = "success";
+            var stopwatch = Stopwatch.StartNew();
+
             try
             {
+                using var activity = SmartFinanceTelemetry.ActivitySource.StartActivity("outbox.publish", ActivityKind.Producer);
+                activity?.SetTag("messaging.system", "rabbitmq");
+                activity?.SetTag("messaging.destination.name", _options.ExchangeName);
+                activity?.SetTag("messaging.rabbitmq.routing_key", message.RoutingKey);
+                activity?.SetTag("messaging.message.id", message.Id.ToString("N"));
+                activity?.SetTag("messaging.operation", "publish");
+                activity?.SetTag("event.type", message.EventType);
+                activity?.SetTag("correlation.id", message.CorrelationId);
+
                 var properties = channel.CreateBasicProperties();
                 properties.Persistent = true;
                 properties.MessageId = message.Id.ToString("N");
@@ -110,6 +124,10 @@ public sealed class OutboxPublisherService : BackgroundService
                 message.PublishedAt = DateTime.UtcNow;
                 message.LastError = null;
                 message.RetryCount = 0;
+
+                SmartFinanceTelemetry.OutboxPublishedTotal
+                    .WithLabels(message.EventType)
+                    .Inc();
             }
             catch (Exception ex)
             {
@@ -119,6 +137,11 @@ public sealed class OutboxPublisherService : BackgroundService
                 message.Status = message.RetryCount >= _options.PublisherMaxRetries
                     ? OutboxMessageStatuses.DeadLettered
                     : OutboxMessageStatuses.Retrying;
+                status = message.Status;
+
+                SmartFinanceTelemetry.OutboxFailedTotal
+                    .WithLabels(message.EventType, message.Status)
+                    .Inc();
 
                 _logger.LogWarning(
                     ex,
@@ -126,6 +149,13 @@ public sealed class OutboxPublisherService : BackgroundService
                     message.Id,
                     message.RetryCount,
                     message.Status);
+            }
+            finally
+            {
+                stopwatch.Stop();
+                SmartFinanceTelemetry.OutboxPublishDurationSeconds
+                    .WithLabels(message.EventType, status)
+                    .Observe(stopwatch.Elapsed.TotalSeconds);
             }
         }
 

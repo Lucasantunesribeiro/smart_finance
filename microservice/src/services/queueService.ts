@@ -1,6 +1,6 @@
 import Bull from 'bull';
-import { createClient } from 'redis';
 import { logger } from '../utils/logger';
+import { queueJobDurationSeconds, queueJobsTotal, setDependencyStatus } from '../observability/metrics';
 import { paymentService } from './paymentService';
 import { BankingService } from './bankingService';
 
@@ -51,9 +51,11 @@ export class QueueService {
       this.setupPaymentProcessors();
       this.setupReconciliationProcessors();
       this.setupEventHandlers();
+      setDependencyStatus('queue', true);
       
       logger.info('Queue service initialized successfully');
     } catch (error) {
+      setDependencyStatus('queue', false);
       logger.error('Error initializing queue service:', error);
       throw error;
     }
@@ -62,6 +64,8 @@ export class QueueService {
   private setupPaymentProcessors(): void {
     this.paymentQueue.process('processPayment', 10, async (job) => {
       const { paymentId } = job.data;
+      const endTimer = queueJobDurationSeconds.startTimer({ queue: 'payment', job_name: 'processPayment' });
+      let status = 'success';
       
       try {
         logger.info(`Processing payment job: ${paymentId}`);
@@ -69,16 +73,23 @@ export class QueueService {
         const result = await paymentService.processPayment(paymentId);
         
         logger.info(`Payment processed successfully: ${paymentId}`, result);
+        queueJobsTotal.inc({ queue: 'payment', job_name: 'processPayment', status });
         
         return result;
       } catch (error) {
+        status = 'failure';
+        queueJobsTotal.inc({ queue: 'payment', job_name: 'processPayment', status });
         logger.error(`Payment processing failed: ${paymentId}`, error);
         throw error;
+      } finally {
+        endTimer({ status });
       }
     });
 
     this.paymentQueue.process('retryPayment', 5, async (job) => {
       const { paymentId } = job.data;
+      const endTimer = queueJobDurationSeconds.startTimer({ queue: 'payment', job_name: 'retryPayment' });
+      let status = 'success';
       
       try {
         logger.info(`Retrying payment job: ${paymentId}`);
@@ -86,11 +97,16 @@ export class QueueService {
         const result = await paymentService.retryPayment(paymentId);
         
         logger.info(`Payment retry successful: ${paymentId}`, result);
+        queueJobsTotal.inc({ queue: 'payment', job_name: 'retryPayment', status });
         
         return result;
       } catch (error) {
+        status = 'failure';
+        queueJobsTotal.inc({ queue: 'payment', job_name: 'retryPayment', status });
         logger.error(`Payment retry failed: ${paymentId}`, error);
         throw error;
+      } finally {
+        endTimer({ status });
       }
     });
   }
@@ -98,6 +114,8 @@ export class QueueService {
   private setupReconciliationProcessors(): void {
     this.reconciliationQueue.process('reconcileAccount', 5, async (job) => {
       const { accountId } = job.data;
+      const endTimer = queueJobDurationSeconds.startTimer({ queue: 'reconciliation', job_name: 'reconcileAccount' });
+      let status = 'success';
       
       try {
         logger.info(`Starting reconciliation for account: ${accountId}`);
@@ -105,16 +123,23 @@ export class QueueService {
         const result = await this.bankingService.reconcileAccount(accountId);
         
         logger.info(`Reconciliation completed for account: ${accountId}`, result);
+        queueJobsTotal.inc({ queue: 'reconciliation', job_name: 'reconcileAccount', status });
         
         return result;
       } catch (error) {
+        status = 'failure';
+        queueJobsTotal.inc({ queue: 'reconciliation', job_name: 'reconcileAccount', status });
         logger.error(`Reconciliation failed for account: ${accountId}`, error);
         throw error;
+      } finally {
+        endTimer({ status });
       }
     });
 
     this.reconciliationQueue.process('syncBankData', 3, async (job) => {
       const { userId } = job.data;
+      const endTimer = queueJobDurationSeconds.startTimer({ queue: 'reconciliation', job_name: 'syncBankData' });
+      let status = 'success';
       
       try {
         logger.info(`Syncing bank data for user: ${userId}`);
@@ -122,11 +147,16 @@ export class QueueService {
         const result = await this.bankingService.syncUserBankData(userId);
         
         logger.info(`Bank data sync completed for user: ${userId}`, result);
+        queueJobsTotal.inc({ queue: 'reconciliation', job_name: 'syncBankData', status });
         
         return result;
       } catch (error) {
+        status = 'failure';
+        queueJobsTotal.inc({ queue: 'reconciliation', job_name: 'syncBankData', status });
         logger.error(`Bank data sync failed for user: ${userId}`, error);
         throw error;
+      } finally {
+        endTimer({ status });
       }
     });
   }
@@ -137,10 +167,12 @@ export class QueueService {
     });
 
     this.paymentQueue.on('failed', (job, err) => {
+      queueJobsTotal.inc({ queue: 'payment', job_name: 'processPayment', status: 'failed_event' });
       logger.error(`Payment job failed: ${job.id}`, err);
     });
 
     this.paymentQueue.on('stalled', (job) => {
+      queueJobsTotal.inc({ queue: 'payment', job_name: 'processPayment', status: 'stalled' });
       logger.warn(`Payment job stalled: ${job.id}`);
     });
 
@@ -149,6 +181,7 @@ export class QueueService {
     });
 
     this.reconciliationQueue.on('failed', (job, err) => {
+      queueJobsTotal.inc({ queue: 'reconciliation', job_name: String(job?.name ?? 'unknown'), status: 'failed_event' });
       logger.error(`Reconciliation job failed: ${job.id}`, err);
     });
   }
@@ -272,6 +305,7 @@ export class QueueService {
     try {
       await this.paymentQueue.close();
       await this.reconciliationQueue.close();
+      setDependencyStatus('queue', false);
       
       logger.info('Queue service shut down successfully');
     } catch (error) {

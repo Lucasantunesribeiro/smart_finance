@@ -11,12 +11,14 @@ export const errorHandler = (
   err: AppError,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ): void => {
-  let { statusCode = 500, message, status = 'error' } = err;
+  const { status = 'error' } = err;
+  let { statusCode = 500, message } = err;
 
   // Log error
   logger.error({
+    correlationId: req.correlationId,
     error: err.message,
     stack: err.stack,
     url: req.url,
@@ -56,6 +58,7 @@ export const errorHandler = (
   }
 
   const response: any = {
+    correlationId: req.correlationId,
     status,
     message,
     timestamp: new Date().toISOString(),

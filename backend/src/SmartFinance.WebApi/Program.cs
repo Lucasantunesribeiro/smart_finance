@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -6,6 +8,9 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using Prometheus;
 using Serilog;
 using SmartFinance.Application.Common.Interfaces;
 using SmartFinance.Domain.Interfaces;
@@ -15,12 +20,15 @@ using SmartFinance.Infrastructure.Services;
 using SmartFinance.WebApi.Hubs;
 using SmartFinance.WebApi.Messaging;
 using SmartFinance.WebApi.Middleware;
+using SmartFinance.WebApi.Observability;
 using SmartFinance.WebApi.Security;
 using System.Threading.RateLimiting;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
+Activity.DefaultIdFormat = ActivityIdFormat.W3C;
+Activity.ForceDefaultIdFormat = true;
 
 // Configure URLs to avoid port conflicts when running locally
 if (builder.Environment.IsDevelopment() && Environment.GetEnvironmentVariable("ASPNETCORE_URLS") == null)
@@ -36,6 +44,32 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 builder.Host.UseSerilog();
+
+var otlpEndpoint = builder.Configuration["Observability:Otlp:Endpoint"]
+    ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService("smartfinance-backend"))
+    .WithTracing(tracing =>
+    {
+        tracing
+            .AddAspNetCoreInstrumentation(options =>
+            {
+                options.RecordException = true;
+                options.Filter = httpContext => !httpContext.Request.Path.StartsWithSegments("/metrics");
+            })
+            .AddHttpClientInstrumentation()
+            .AddEntityFrameworkCoreInstrumentation(options =>
+            {
+                options.SetDbStatementForText = true;
+            })
+            .AddSource(SmartFinanceTelemetry.ActivitySourceName);
+
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+        {
+            tracing.AddOtlpExporter(options => options.Endpoint = new Uri(otlpEndpoint));
+        }
+    });
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -246,9 +280,21 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseSerilogRequestLogging();
+app.UseMiddleware<CorrelationIdMiddleware>();
+
+app.UseSerilogRequestLogging(options =>
+{
+    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    {
+        diagnosticContext.Set("CorrelationId", httpContext.TraceIdentifier);
+        diagnosticContext.Set("TraceId", Activity.Current?.TraceId.ToString() ?? string.Empty);
+        diagnosticContext.Set("UserId", httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty);
+        diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
+    };
+});
 
 app.UseMiddleware<ExceptionMiddleware>();
+app.UseHttpMetrics();
 
 app.UseHttpsRedirection();
 
@@ -263,6 +309,7 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<FinanceHub>("/financehub");
 app.MapHealthChecks("/health");
+app.MapMetrics("/metrics");
 
 using (var scope = app.Services.CreateScope())
 {
@@ -319,8 +366,7 @@ static string BuildPostgresConnectionString(string databaseUrl, bool useSsl)
         Database = uri.AbsolutePath.TrimStart('/'),
         Username = username,
         Password = password,
-        SslMode = useSsl ? SslMode.Require : SslMode.Disable,
-        TrustServerCertificate = useSsl
+        SslMode = useSsl ? SslMode.Require : SslMode.Disable
     };
 
     return builder.ConnectionString;

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +8,7 @@ using RabbitMQ.Client.Events;
 using SmartFinance.Application.Common.DTOs;
 using SmartFinance.Infrastructure.Data;
 using SmartFinance.WebApi.Hubs;
+using SmartFinance.WebApi.Observability;
 
 namespace SmartFinance.WebApi.Messaging;
 
@@ -76,6 +78,9 @@ public sealed class TransactionCreatedConsumerService : BackgroundService
         }
 
         var correlationId = eventArgs.BasicProperties.CorrelationId ?? messageId;
+        var eventType = eventArgs.BasicProperties.Type ?? TransactionCreatedIntegrationEvent.CurrentEventType;
+        var stopwatch = Stopwatch.StartNew();
+        var status = "success";
         using var logScope = _logger.BeginScope(new Dictionary<string, object?>
         {
             ["MessageId"] = messageId,
@@ -85,6 +90,15 @@ public sealed class TransactionCreatedConsumerService : BackgroundService
 
         try
         {
+            using var activity = SmartFinanceTelemetry.ActivitySource.StartActivity("events.transaction-created.consume", ActivityKind.Consumer);
+            activity?.SetTag("messaging.system", "rabbitmq");
+            activity?.SetTag("messaging.destination.name", _options.TransactionCreatedQueueName);
+            activity?.SetTag("messaging.rabbitmq.routing_key", eventArgs.RoutingKey);
+            activity?.SetTag("messaging.message.id", messageId);
+            activity?.SetTag("messaging.operation", "process");
+            activity?.SetTag("event.type", eventType);
+            activity?.SetTag("correlation.id", correlationId);
+
             var payload = Encoding.UTF8.GetString(eventArgs.Body.ToArray());
             var integrationEvent = JsonSerializer.Deserialize<TransactionCreatedIntegrationEvent>(payload, SerializerOptions)
                 ?? throw new InvalidOperationException("TransactionCreatedIntegrationEvent payload is invalid.");
@@ -100,6 +114,10 @@ public sealed class TransactionCreatedConsumerService : BackgroundService
 
             if (alreadyProcessed)
             {
+                status = "duplicate";
+                SmartFinanceTelemetry.IntegrationConsumerProcessedTotal
+                    .WithLabels(ConsumerName, eventType, status)
+                    .Inc();
                 _channel!.BasicAck(eventArgs.DeliveryTag, multiple: false);
                 return;
             }
@@ -126,18 +144,36 @@ public sealed class TransactionCreatedConsumerService : BackgroundService
             });
 
             await dbContext.SaveChangesAsync(cancellationToken);
+            SmartFinanceTelemetry.IntegrationConsumerProcessedTotal
+                .WithLabels(ConsumerName, eventType, status)
+                .Inc();
             _channel!.BasicAck(eventArgs.DeliveryTag, multiple: false);
         }
         catch (DbUpdateException ex)
         {
+            status = "duplicate";
+            SmartFinanceTelemetry.IntegrationConsumerProcessedTotal
+                .WithLabels(ConsumerName, eventType, status)
+                .Inc();
             _logger.LogWarning(ex, "Duplicate integration event receipt detected. Acknowledging message.");
             _channel!.BasicAck(eventArgs.DeliveryTag, multiple: false);
         }
         catch (Exception ex)
         {
+            status = GetFailureStatus(GetRetryCount(eventArgs.BasicProperties.Headers) + 1);
+            SmartFinanceTelemetry.IntegrationConsumerProcessedTotal
+                .WithLabels(ConsumerName, eventType, status)
+                .Inc();
             _logger.LogError(ex, "Failed to process transaction created event.");
             PublishRetryOrDeadLetter(eventArgs, ex);
             _channel!.BasicAck(eventArgs.DeliveryTag, multiple: false);
+        }
+        finally
+        {
+            stopwatch.Stop();
+            SmartFinanceTelemetry.IntegrationConsumerDurationSeconds
+                .WithLabels(ConsumerName, eventType, status)
+                .Observe(stopwatch.Elapsed.TotalSeconds);
         }
     }
 
@@ -228,5 +264,12 @@ public sealed class TransactionCreatedConsumerService : BackgroundService
             byte[] value when int.TryParse(Encoding.UTF8.GetString(value), out var parsed) => parsed,
             _ => 0
         };
+    }
+
+    private string GetFailureStatus(int retryCount)
+    {
+        return retryCount > _options.ConsumerMaxRetries
+            ? "dead_lettered"
+            : "retry";
     }
 }

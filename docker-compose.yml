@@ -77,5 +77,36 @@ services:
       NEXT_PUBLIC_PAYMENT_API_URL: /api/v1/payments
       BACKEND_URL: http://backend:5000
 
+  prometheus:
+    profiles: ['observability']
+    image: prom/prometheus:v2.54.1
+    restart: unless-stopped
+    depends_on:
+      - backend
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - '127.0.0.1:9090:9090'
+
+  grafana:
+    profiles: ['observability']
+    image: grafana/grafana-oss:11.1.0
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: 'true'
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_DISABLE_LOGIN_FORM: 'true'
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - '127.0.0.1:3002:3000'
+
 volumes:
   postgres_data:
