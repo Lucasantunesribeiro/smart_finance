@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SmartFinance.Domain.Constants;
 using SmartFinance.Domain.Entities;
 using SmartFinance.Domain.Common;
 using SmartFinance.Domain.Enums;
@@ -19,6 +20,8 @@ public class SmartFinanceDbContext : DbContext
     public DbSet<BudgetAlert> BudgetAlerts { get; set; }
     public DbSet<Report> Reports { get; set; }
     public DbSet<TransactionTag> TransactionTags { get; set; }
+    public DbSet<OutboxMessage> OutboxMessages { get; set; }
+    public DbSet<ProcessedIntegrationEvent> ProcessedIntegrationEvents { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -177,6 +180,32 @@ public class SmartFinanceDbContext : DbContext
                 .HasForeignKey(e => e.TransactionId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        modelBuilder.Entity<OutboxMessage>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.EventType).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.RoutingKey).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Payload).IsRequired();
+            entity.Property(e => e.CorrelationId).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(50).HasDefaultValue(OutboxMessageStatuses.Pending);
+            entity.Property(e => e.LastError).HasMaxLength(4000);
+
+            entity.HasIndex(e => new { e.Status, e.AvailableAt });
+            entity.HasIndex(e => new { e.AggregateId, e.EventType });
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        modelBuilder.Entity<ProcessedIntegrationEvent>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.MessageId).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Consumer).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.EventType).IsRequired().HasMaxLength(200);
+
+            entity.HasIndex(e => new { e.MessageId, e.Consumer }).IsUnique();
             entity.HasQueryFilter(e => !e.IsDeleted);
         });
 

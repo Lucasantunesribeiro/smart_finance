@@ -27,6 +27,31 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  rabbitmq:
+    image: rabbitmq:3.13-alpine
+    container_name: smartfinance_rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - smartfinance_network
+    mem_limit: 180m
+    mem_reservation: 96m
+    cpus: 0.2
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   backend:
     build:
       context: ./backend
@@ -36,6 +61,8 @@ services:
     restart: unless-stopped
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     ports:
       - '127.0.0.1:5000:5000'
@@ -50,6 +77,14 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       COOKIE_SECURE: ${COOKIE_SECURE}
       COOKIE_SAMESITE: ${COOKIE_SAMESITE}
+      Messaging__RabbitMq__Enabled: 'true'
+      Messaging__RabbitMq__ConnectionUri: ${RABBITMQ_CONNECTION_URI}
+      Messaging__RabbitMq__PrefetchCount: 1
+      Messaging__RabbitMq__PublisherBatchSize: 20
+      Messaging__RabbitMq__PublisherPollIntervalSeconds: 5
+      Messaging__RabbitMq__ConsumerMaxRetries: 3
+      Messaging__RabbitMq__PublisherMaxRetries: 5
+      Messaging__RabbitMq__RetryDelaySeconds: 30
     networks:
       - smartfinance_network
     mem_limit: 300m
@@ -110,4 +145,6 @@ networks:
 
 volumes:
   postgres_data:
+    driver: local
+  rabbitmq_data:
     driver: local

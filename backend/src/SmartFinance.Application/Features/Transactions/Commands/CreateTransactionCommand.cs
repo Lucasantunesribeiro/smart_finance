@@ -1,6 +1,9 @@
+using System.Diagnostics;
+using System.Text.Json;
 using MediatR;
 using SmartFinance.Application.Common.DTOs;
 using SmartFinance.Application.Common.Utils;
+using SmartFinance.Domain.Constants;
 using SmartFinance.Domain.Entities;
 using SmartFinance.Domain.Enums;
 using SmartFinance.Domain.Interfaces;
@@ -26,6 +29,8 @@ public class CreateTransactionCommand : IRequest<TransactionDto>
 
 public class CreateTransactionCommandHandler : IRequestHandler<CreateTransactionCommand, TransactionDto>
 {
+    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
+
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CreateTransactionCommandHandler> _logger;
 
@@ -97,6 +102,7 @@ public class CreateTransactionCommandHandler : IRequestHandler<CreateTransaction
         await _unitOfWork.Repository<Transaction>().AddAsync(transaction, cancellationToken);
 
         await UpdateAccountBalance(account, transaction, cancellationToken);
+        await AddTransactionCreatedOutboxMessageAsync(transaction, categoryId, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -118,6 +124,40 @@ public class CreateTransactionCommandHandler : IRequestHandler<CreateTransaction
         }
 
         await _unitOfWork.Repository<Account>().UpdateAsync(account, cancellationToken);
+    }
+
+    private async Task AddTransactionCreatedOutboxMessageAsync(
+        Transaction transaction,
+        Guid? categoryId,
+        CancellationToken cancellationToken)
+    {
+        var integrationEvent = new TransactionCreatedIntegrationEvent
+        {
+            TransactionId = transaction.Id,
+            UserId = transaction.UserId,
+            AccountId = transaction.AccountId,
+            CategoryId = categoryId,
+            Amount = transaction.Amount,
+            Description = transaction.Description,
+            TransactionType = transaction.Type.ToString(),
+            TransactionDateUtc = transaction.TransactionDate,
+            Reference = transaction.Reference,
+            EventType = TransactionCreatedIntegrationEvent.CurrentEventType
+        };
+
+        var outboxMessage = new OutboxMessage
+        {
+            EventType = TransactionCreatedIntegrationEvent.CurrentEventType,
+            RoutingKey = TransactionCreatedIntegrationEvent.CurrentRoutingKey,
+            AggregateId = transaction.Id,
+            Payload = JsonSerializer.Serialize(integrationEvent, SerializerOptions),
+            CorrelationId = Activity.Current?.TraceId.ToString() ?? transaction.Id.ToString("N"),
+            AvailableAt = DateTime.UtcNow,
+            Status = OutboxMessageStatuses.Pending,
+            RetryCount = 0
+        };
+
+        await _unitOfWork.Repository<OutboxMessage>().AddAsync(outboxMessage, cancellationToken);
     }
 
     private async Task<TransactionDto> MapToDto(Transaction transaction, CancellationToken cancellationToken)

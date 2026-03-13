@@ -13,12 +13,28 @@ services:
     ports:
       - '5432:5432'
 
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-smartfinance}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-smartfinance-rabbit}
+    ports:
+      - '127.0.0.1:5672:5672'
+      - '127.0.0.1:15672:15672'
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     depends_on:
       - postgres
+      - rabbitmq
     ports:
       - '5000:5000'
     environment:
@@ -32,6 +48,14 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-this-jwt-secret-before-production-use}
       COOKIE_SECURE: 'false'
       COOKIE_SAMESITE: Lax
+      Messaging__RabbitMq__Enabled: 'true'
+      Messaging__RabbitMq__ConnectionUri: amqp://${RABBITMQ_USER:-smartfinance}:${RABBITMQ_PASSWORD:-smartfinance-rabbit}@rabbitmq:5672
+      Messaging__RabbitMq__PrefetchCount: 1
+      Messaging__RabbitMq__PublisherBatchSize: 20
+      Messaging__RabbitMq__PublisherPollIntervalSeconds: 5
+      Messaging__RabbitMq__ConsumerMaxRetries: 3
+      Messaging__RabbitMq__PublisherMaxRetries: 5
+      Messaging__RabbitMq__RetryDelaySeconds: 30
 
   frontend:
     build:

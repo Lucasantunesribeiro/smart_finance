@@ -13,6 +13,7 @@ using SmartFinance.Infrastructure.Data;
 using SmartFinance.Infrastructure.Repositories;
 using SmartFinance.Infrastructure.Services;
 using SmartFinance.WebApi.Hubs;
+using SmartFinance.WebApi.Messaging;
 using SmartFinance.WebApi.Middleware;
 using SmartFinance.WebApi.Security;
 using System.Threading.RateLimiting;
@@ -73,10 +74,24 @@ builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IBudgetService, BudgetService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+builder.Services.AddScoped<IFinanceHubService, FinanceHubService>();
 
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(SmartFinance.Application.AssemblyReference.Assembly));
 
 builder.Services.AddAutoMapper(typeof(Program).Assembly);
+builder.Services.Configure<RabbitMqOptions>(builder.Configuration.GetSection(RabbitMqOptions.ConfigurationSectionName));
+
+var rabbitMqOptions = builder.Configuration.GetSection(RabbitMqOptions.ConfigurationSectionName).Get<RabbitMqOptions>() ?? new RabbitMqOptions();
+if (rabbitMqOptions.Enabled)
+{
+    if (string.IsNullOrWhiteSpace(rabbitMqOptions.ConnectionUri))
+    {
+        throw new InvalidOperationException("Messaging:RabbitMq:ConnectionUri must be configured when RabbitMQ is enabled.");
+    }
+
+    builder.Services.AddHostedService<OutboxPublisherService>();
+    builder.Services.AddHostedService<TransactionCreatedConsumerService>();
+}
 
 var jwtSecret = builder.Configuration["Jwt:SecretKey"] ?? Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
 if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret.Trim().Length < 32)
