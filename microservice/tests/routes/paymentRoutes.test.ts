@@ -1,8 +1,7 @@
 import request from 'supertest';
 import express from 'express';
-import { paymentRoutes } from '../../src/routes/paymentRoutes';
+import { createPaymentRoutes } from '../../src/routes/paymentRoutes';
 import { PaymentStatus, PaymentResponse } from '../../src/types/payment';
-import { PaymentService } from '../../src/services/paymentService';
 
 // Mock auth middleware
 jest.mock('../../src/middleware/auth', () => ({
@@ -19,23 +18,9 @@ jest.mock('../../src/middleware/auth', () => ({
   },
 }));
 
-// Mock PaymentService
-jest.mock('../../src/services/paymentService');
-
-const app = express();
-app.use(express.json());
-app.use('/api/v1/payments', paymentRoutes);
-
-// Error handler middleware
-app.use((error: any, req: any, res: any, next: any) => {
-  res.status(error.status || 500).json({
-    status: 'error',
-    message: error.message || 'Internal server error',
-  });
-});
-
 describe('Payment Routes', () => {
-  let mockPaymentService: jest.Mocked<PaymentService>;
+  let app: express.Express;
+  let mockPaymentService: any;
 
   beforeEach(() => {
     mockPaymentService = {
@@ -53,7 +38,15 @@ describe('Payment Routes', () => {
       mapToPaymentResponse: jest.fn(),
     } as any;
 
-    (PaymentService as jest.Mock).mockImplementation(() => mockPaymentService);
+    app = express();
+    app.use(express.json());
+    app.use('/api/v1/payments', createPaymentRoutes(mockPaymentService));
+    app.use((error: any, req: any, res: any, next: any) => {
+      res.status(error.status || error.statusCode || 500).json({
+        status: 'error',
+        message: error.message || 'Internal server error',
+      });
+    });
   });
 
   afterEach(() => {
@@ -211,6 +204,7 @@ describe('Payment Routes', () => {
         status: 'success',
         data: mockPayments,
       });
+      expect(mockPaymentService.getUserPayments).toHaveBeenCalledWith('user-123');
     });
   });
 });

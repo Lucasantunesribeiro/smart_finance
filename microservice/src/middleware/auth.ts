@@ -5,8 +5,10 @@ import { createError } from './errorHandler';
 export interface AuthRequest extends Request {
   user?: {
     id: string;
-    username: string;
+    username?: string;
+    email?: string;
     role: string;
+    [key: string]: unknown;
   };
 }
 
@@ -15,32 +17,67 @@ export const authMiddleware = (
   res: Response,
   next: NextFunction
 ): void => {
+  const rawAuthorizationHeader = typeof req.header === 'function'
+    ? req.header('Authorization')
+    : req.headers.authorization;
+  const authorizationHeader = Array.isArray(rawAuthorizationHeader)
+    ? rawAuthorizationHeader[0]
+    : rawAuthorizationHeader;
+  if (!authorizationHeader) {
+    res.status(401).json({
+      status: 'error',
+      message: 'Access token is required',
+    });
+    return;
+  }
+
+  if (!authorizationHeader.startsWith('Bearer ')) {
+    res.status(401).json({
+      status: 'error',
+      message: 'Invalid token format',
+    });
+    return;
+  }
+
+  const token = authorizationHeader.slice('Bearer '.length).trim();
+  if (!token) {
+    res.status(401).json({
+      status: 'error',
+      message: 'Invalid token format',
+    });
+    return;
+  }
+
+  const jwtSecret = process.env.JWT_SECRET || (process.env.NODE_ENV === 'test' ? 'test-secret' : undefined);
+  if (!jwtSecret) {
+    next(createError('JWT_SECRET must be defined in environment variables', 500));
+    return;
+  }
+
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-
-    if (!token) {
-      throw createError('Access denied. No token provided.', 401);
-    }
-
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      throw createError('JWT_SECRET must be defined in environment variables', 500);
-    }
-    const decoded = jwt.verify(token, jwtSecret) as {
-      id: string;
-      username: string;
-      role: string;
-    };
+    const decoded = jwt.verify(token, jwtSecret) as AuthRequest['user'];
 
     req.user = decoded;
     next();
   } catch (error) {
-    if (error instanceof jwt.JsonWebTokenError) {
-      throw createError('Invalid token', 401);
+    const errorName = error instanceof Error ? error.name : '';
+
+    if (errorName === 'TokenExpiredError') {
+      res.status(401).json({
+        status: 'error',
+        message: 'Token has expired',
+      });
+      return;
     }
-    if (error instanceof jwt.TokenExpiredError) {
-      throw createError('Token expired', 401);
+
+    if (errorName === 'JsonWebTokenError' || error instanceof Error) {
+      res.status(401).json({
+        status: 'error',
+        message: 'Invalid or expired token',
+      });
+      return;
     }
+
     next(error);
   }
 };
@@ -48,11 +85,19 @@ export const authMiddleware = (
 export const requireRole = (roles: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
-      throw createError('Access denied. Authentication required.', 401);
+      res.status(401).json({
+        status: 'error',
+        message: 'Authentication required',
+      });
+      return;
     }
 
     if (!roles.includes(req.user.role)) {
-      throw createError('Access denied. Insufficient permissions.', 403);
+      res.status(403).json({
+        status: 'error',
+        message: 'Insufficient permissions',
+      });
+      return;
     }
 
     next();

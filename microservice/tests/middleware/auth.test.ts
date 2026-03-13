@@ -165,10 +165,10 @@ describe('Auth Middleware', () => {
       
       middleware(mockRequest as Request, mockResponse as Response, nextFunction);
 
-      expect(mockResponse.status).toHaveBeenCalledWith(403);
+      expect(mockResponse.status).toHaveBeenCalledWith(401);
       expect(mockResponse.json).toHaveBeenCalledWith({
         status: 'error',
-        message: 'Insufficient permissions',
+        message: 'Authentication required',
       });
       expect(nextFunction).not.toHaveBeenCalled();
     });

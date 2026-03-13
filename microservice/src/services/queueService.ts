@@ -4,7 +4,7 @@ import { logger } from '../utils/logger';
 import { paymentService } from './paymentService';
 import { BankingService } from './bankingService';
 
-class QueueService {
+export class QueueService {
   private paymentQueue: Bull.Queue;
   private reconciliationQueue: Bull.Queue;
   private redisClient: any;
@@ -154,6 +154,10 @@ class QueueService {
   }
 
   async addPaymentProcessingJob(paymentId: string, delay?: number): Promise<void> {
+    if (!paymentId) {
+      throw new Error('Payment ID is required');
+    }
+
     try {
       await this.paymentQueue.add('processPayment', { paymentId }, {
         delay: delay || 0,
@@ -223,10 +227,14 @@ class QueueService {
 
   async getQueueStats(): Promise<any> {
     try {
-      const paymentStats = await this.paymentQueue.getJobCounts();
-      const reconciliationStats = await this.reconciliationQueue.getJobCounts();
+      const paymentStats = await this.getJobCountSnapshot(this.paymentQueue);
+      const reconciliationStats = await this.getJobCountSnapshot(this.reconciliationQueue);
       
       return {
+        waiting: paymentStats.waiting + reconciliationStats.waiting,
+        active: paymentStats.active + reconciliationStats.active,
+        completed: paymentStats.completed + reconciliationStats.completed,
+        failed: paymentStats.failed + reconciliationStats.failed,
         payment: paymentStats,
         reconciliation: reconciliationStats,
       };
@@ -234,6 +242,30 @@ class QueueService {
       logger.error('Error getting queue stats:', error);
       throw error;
     }
+  }
+
+  async retryFailedJobs(): Promise<number> {
+    const failedJobs = [
+      ...(await this.paymentQueue.getFailed()),
+      ...(await this.reconciliationQueue.getFailed()),
+    ];
+
+    let retriedCount = 0;
+    for (const job of failedJobs) {
+      if (typeof job.retry === 'function') {
+        await job.retry();
+        retriedCount += 1;
+      }
+    }
+
+    return retriedCount;
+  }
+
+  async clearQueue(): Promise<void> {
+    await Promise.all([
+      this.clearQueueJobs(this.paymentQueue),
+      this.clearQueueJobs(this.reconciliationQueue),
+    ]);
   }
 
   async shutdown(): Promise<void> {
@@ -245,6 +277,38 @@ class QueueService {
     } catch (error) {
       logger.error('Error shutting down queue service:', error);
     }
+  }
+
+  private async getJobCountSnapshot(queue: Bull.Queue): Promise<{
+    waiting: number;
+    active: number;
+    completed: number;
+    failed: number;
+    delayed: number;
+  }> {
+    const counts = await queue.getJobCounts();
+
+    return {
+      waiting: counts.waiting ?? 0,
+      active: counts.active ?? 0,
+      completed: counts.completed ?? 0,
+      failed: counts.failed ?? 0,
+      delayed: counts.delayed ?? 0,
+    };
+  }
+
+  private async clearQueueJobs(queue: Bull.Queue): Promise<void> {
+    if (typeof queue.empty === 'function') {
+      await queue.empty();
+    }
+
+    await Promise.all([
+      queue.clean(0, 'wait'),
+      queue.clean(0, 'active'),
+      queue.clean(0, 'completed'),
+      queue.clean(0, 'failed'),
+      queue.clean(0, 'delayed'),
+    ]);
   }
 }
 

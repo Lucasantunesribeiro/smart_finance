@@ -1,6 +1,3 @@
-import { MongoMemoryServer } from 'mongodb-memory-server';
-import mongoose from 'mongoose';
-
 // Mock Redis for tests
 jest.mock('ioredis', () => {
   return jest.fn().mockImplementation(() => ({
@@ -24,6 +21,14 @@ jest.mock('bull', () => {
     process: jest.fn(),
     on: jest.fn(),
     close: jest.fn().mockResolvedValue(undefined),
+    empty: jest.fn().mockResolvedValue(undefined),
+    getJobCounts: jest.fn().mockResolvedValue({
+      waiting: 0,
+      active: 0,
+      completed: 0,
+      failed: 0,
+      delayed: 0,
+    }),
     getWaiting: jest.fn().mockResolvedValue([]),
     getActive: jest.fn().mockResolvedValue([]),
     getCompleted: jest.fn().mockResolvedValue([]),
@@ -47,30 +52,7 @@ jest.mock('../src/utils/logger', () => ({
   },
 }));
 
-let mongoServer: MongoMemoryServer;
-
-beforeAll(async () => {
-  // Setup in-memory MongoDB for tests
-  mongoServer = await MongoMemoryServer.create();
-  const mongoUri = mongoServer.getUri();
-  
-  await mongoose.connect(mongoUri);
-});
-
-afterAll(async () => {
-  // Cleanup
-  await mongoose.disconnect();
-  await mongoServer.stop();
-});
-
 beforeEach(async () => {
-  // Clear all collections before each test
-  const collections = mongoose.connection.collections;
-  for (const key in collections) {
-    const collection = collections[key];
-    await collection.deleteMany({});
-  }
-  
   // Clear all mocks
   jest.clearAllMocks();
 });

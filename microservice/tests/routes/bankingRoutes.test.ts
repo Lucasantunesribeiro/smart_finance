@@ -1,6 +1,6 @@
 import request from 'supertest';
 import express from 'express';
-import { bankingRoutes } from '../../src/routes/bankingRoutes';
+import { createBankingRoutes } from '../../src/routes/bankingRoutes';
 import { BankTransactionType, ReconciliationStatus } from '../../src/types/payment';
 
 // Mock auth middleware
@@ -18,32 +18,6 @@ jest.mock('../../src/middleware/auth', () => ({
   },
 }));
 
-// Mock BankingService
-jest.mock('../../src/services/bankingService', () => ({
-  BankingService: jest.fn().mockImplementation(() => ({
-    createBankAccount: jest.fn(),
-    processTransaction: jest.fn(),
-    reconcileTransactions: jest.fn(),
-    getAccountBalance: jest.fn(),
-    getTransactionHistory: jest.fn(),
-    getAccountInfo: jest.fn(),
-    transferFunds: jest.fn(),
-    verifyAccount: jest.fn(),
-  })),
-}));
-
-const app = express();
-app.use(express.json());
-app.use('/api/v1/banking', bankingRoutes);
-
-// Error handler middleware
-app.use((error: any, req: any, res: any, next: any) => {
-  res.status(error.status || 500).json({
-    status: 'error',
-    message: error.message || 'Internal server error',
-  });
-});
-
 const mockBankingService = {
   createBankAccount: jest.fn(),
   processTransaction: jest.fn(),
@@ -55,13 +29,20 @@ const mockBankingService = {
   verifyAccount: jest.fn(),
 };
 
-// Get the mocked BankingService
-const { BankingService } = require('../../src/services/bankingService');
-BankingService.mockImplementation(() => mockBankingService);
-
 describe('Banking Routes', () => {
+  let app: express.Express;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    app = express();
+    app.use(express.json());
+    app.use('/api/v1/banking', createBankingRoutes(mockBankingService as any));
+    app.use((error: any, req: any, res: any, next: any) => {
+      res.status(error.status || error.statusCode || 500).json({
+        status: 'error',
+        message: error.message || 'Internal server error',
+      });
+    });
   });
 
   describe('POST /api/v1/banking/accounts', () => {
@@ -91,7 +72,10 @@ describe('Banking Routes', () => {
 
       expect(response.body).toEqual({
         status: 'success',
-        data: mockAccount,
+        data: {
+          ...mockAccount,
+          createdAt: mockAccount.createdAt.toISOString(),
+        },
       });
       expect(mockBankingService.createBankAccount).toHaveBeenCalledWith(accountData);
     });
@@ -147,7 +131,11 @@ describe('Banking Routes', () => {
 
       expect(response.body).toEqual({
         status: 'success',
-        data: mockTransaction,
+        data: {
+          ...mockTransaction,
+          processedAt: mockTransaction.processedAt.toISOString(),
+          createdAt: mockTransaction.createdAt.toISOString(),
+        },
       });
       expect(mockBankingService.processTransaction).toHaveBeenCalledWith(transactionData);
     });
@@ -215,7 +203,11 @@ describe('Banking Routes', () => {
 
       expect(response.body).toEqual({
         status: 'success',
-        data: mockTransactions,
+        data: mockTransactions.map(transaction => ({
+          ...transaction,
+          processedAt: transaction.processedAt.toISOString(),
+          createdAt: transaction.createdAt.toISOString(),
+        })),
       });
       expect(mockBankingService.getTransactionHistory).toHaveBeenCalledWith('account-123', 50, 0);
     });
@@ -262,7 +254,10 @@ describe('Banking Routes', () => {
 
       expect(response.body).toEqual({
         status: 'success',
-        data: mockReconciliation,
+        data: {
+          ...mockReconciliation,
+          reconciledAt: mockReconciliation.reconciledAt.toISOString(),
+        },
       });
       expect(mockBankingService.reconcileTransactions).toHaveBeenCalledWith(reconciliationData);
     });

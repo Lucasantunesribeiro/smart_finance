@@ -33,7 +33,7 @@ export class FraudDetectionService {
       riskScore += this.checkPaymentMethodRisk(request.paymentMethod, riskFactors);
       riskScore += this.checkCurrencyRisk(request.currency, riskFactors);
       riskScore += this.checkLocationRisk(request.metadata, riskFactors);
-      riskScore += this.checkTimeRisk(riskFactors);
+      riskScore += this.checkTimeRisk(request.metadata, riskFactors);
       riskScore += this.checkUserBehaviorRisk(request.userId, riskFactors);
 
       // Normalize riskScore to 0-1 range (divide by 100)
@@ -141,8 +141,14 @@ export class FraudDetectionService {
     return 0;
   }
 
-  private checkTimeRisk(riskFactors: string[]): number {
-    const now = new Date();
+  private checkTimeRisk(metadata: Record<string, any> | undefined, riskFactors: string[]): number {
+    const timestamp = metadata?.transactionTimestamp;
+    const now = timestamp ? new Date(timestamp) : new Date();
+
+    if (Number.isNaN(now.getTime())) {
+      return 0;
+    }
+
     const hour = now.getHours();
 
     if (hour < 6 || hour > 22) {

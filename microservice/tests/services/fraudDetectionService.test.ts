@@ -9,7 +9,9 @@ describe('FraudDetectionService', () => {
         amount: 50.00,
         currency: 'USD',
         paymentMethod: PaymentMethod.CREDIT_CARD,
-        metadata: {},
+        metadata: {
+          transactionTimestamp: '2026-03-12T14:00:00Z',
+        },
       };
 
       const result = await fraudDetectionService.checkTransaction(request);
