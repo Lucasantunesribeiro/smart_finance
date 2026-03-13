@@ -27,9 +27,9 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  microservice:
+  backend:
     build:
-      context: ./microservice
+      context: ./backend
       dockerfile: Dockerfile
     image: smartfinance-backend:latest
     container_name: smartfinance_backend
@@ -40,19 +40,14 @@ services:
     ports:
       - '127.0.0.1:5000:5000'
     environment:
-      NODE_ENV: production
-      PORT: 5000
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5000
       DATABASE_URL: ${DATABASE_URL}
       DB_SSL: ${DB_SSL}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
       JWT_ISSUER: ${JWT_ISSUER}
       JWT_AUDIENCE: ${JWT_AUDIENCE}
-      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
-      AUTO_MIGRATE: ${AUTO_MIGRATE}
-      SEED_DEMO_DATA: ${SEED_DEMO_DATA}
-      TRUST_PROXY: ${TRUST_PROXY}
       COOKIE_SECURE: ${COOKIE_SECURE}
       COOKIE_SAMESITE: ${COOKIE_SAMESITE}
     networks:
@@ -76,22 +71,23 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - NODE_ENV=production
-        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-        - NEXT_PUBLIC_SIGNALR_URL=${NEXT_PUBLIC_SIGNALR_URL}
-        - NEXT_PUBLIC_PAYMENT_API_URL=${NEXT_PUBLIC_PAYMENT_API_URL}
+        - NEXT_PUBLIC_API_URL=/api/v1
+        - NEXT_PUBLIC_SIGNALR_URL=/financehub
+        - NEXT_PUBLIC_PAYMENT_API_URL=/api/v1/payments
+        - BACKEND_URL=http://backend:5000
     image: smartfinance-frontend:latest
     container_name: smartfinance_frontend
     restart: unless-stopped
     depends_on:
-      - microservice
+      - backend
     ports:
       - '127.0.0.1:3000:3000'
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-      NEXT_PUBLIC_SIGNALR_URL: ${NEXT_PUBLIC_SIGNALR_URL}
-      NEXT_PUBLIC_PAYMENT_API_URL: ${NEXT_PUBLIC_PAYMENT_API_URL}
+      NEXT_PUBLIC_API_URL: /api/v1
+      NEXT_PUBLIC_SIGNALR_URL: /financehub
+      NEXT_PUBLIC_PAYMENT_API_URL: /api/v1/payments
+      BACKEND_URL: http://backend:5000
     networks:
       - smartfinance_network
     mem_limit: 200m

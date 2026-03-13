@@ -110,64 +110,6 @@ public class TransactionsController : ControllerBase
         }
     }
 
-    [HttpPost("debug")]
-    public async Task<IActionResult> DebugCreateTransaction([FromBody] CreateTransactionDto transactionData)
-    {
-        try
-        {
-            _logger.LogInformation("=== TRANSACTION DEBUG ENDPOINT ===");
-            _logger.LogInformation("Raw data received: {RawData}", System.Text.Json.JsonSerializer.Serialize(transactionData));
-            _logger.LogInformation("Content-Type: {ContentType}", Request.ContentType);
-            _logger.LogInformation("Request Headers: {Headers}", Request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString()));
-            
-            _logger.LogInformation("Deserialized data: {Data}", System.Text.Json.JsonSerializer.Serialize(transactionData));
-            
-            // Manual validation
-            var errors = new List<string>();
-            
-            if (transactionData == null)
-                errors.Add("Transaction data is null");
-            else
-            {
-                if (string.IsNullOrEmpty(transactionData.Description))
-                    errors.Add("Description is required");
-                    
-                if (transactionData.Amount <= 0)
-                    errors.Add($"Invalid amount: {transactionData.Amount}");
-                    
-                if (string.IsNullOrEmpty(transactionData.AccountId))
-                    errors.Add("AccountId is required");
-                else if (!Guid.TryParse(transactionData.AccountId, out _))
-                    errors.Add("AccountId is not a valid GUID format");
-            }
-            
-            if (errors.Any())
-            {
-                _logger.LogWarning("Validation errors found: {Errors}", string.Join(", ", errors));
-                return BadRequest(new { 
-                    message = "Validation failed",
-                    errors, 
-                    receivedData = transactionData
-                });
-            }
-            
-            return Ok(new { 
-                message = "Debug successful - data is valid", 
-                receivedData = transactionData,
-                timestamp = DateTime.UtcNow
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error in debug endpoint");
-            return BadRequest(new { 
-                error = ex.Message, 
-                receivedData = transactionData,
-                stackTrace = ex.StackTrace 
-            });
-        }
-    }
-
     [HttpPost]
     public async Task<ActionResult<TransactionDto>> CreateTransaction([FromBody] CreateTransactionDto createTransactionDto)
     {

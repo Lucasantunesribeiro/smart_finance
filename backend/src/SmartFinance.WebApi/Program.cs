@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -13,6 +14,7 @@ using SmartFinance.Infrastructure.Repositories;
 using SmartFinance.Infrastructure.Services;
 using SmartFinance.WebApi.Hubs;
 using SmartFinance.WebApi.Middleware;
+using SmartFinance.WebApi.Security;
 using System.Threading.RateLimiting;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Npgsql;
@@ -33,6 +35,13 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 builder.Host.UseSerilog();
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 builder.Services.AddDbContext<SmartFinanceDbContext>(options =>
 {
@@ -95,7 +104,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/financehub"))
                 {
                     context.Token = accessToken;
+                    return Task.CompletedTask;
                 }
+
+                if (context.Request.Cookies.TryGetValue(AuthCookieNames.AccessToken, out var cookieToken)
+                    && !string.IsNullOrWhiteSpace(cookieToken))
+                {
+                    context.Token = cookieToken;
+                }
+
                 return Task.CompletedTask;
             }
         };
@@ -177,9 +194,11 @@ builder.Services.AddSignalR();
 builder.Services.AddCors(options =>
 {
     var albHostname = Environment.GetEnvironmentVariable("ALB_HOSTNAME");
-    var defaultOrigin = !string.IsNullOrWhiteSpace(albHostname)
-        ? $"https://{albHostname}/"
-        : "https://<YOUR_ALB_HOSTNAME>/";
+    var defaultOrigin = builder.Environment.IsDevelopment()
+        ? "http://localhost:3000"
+        : !string.IsNullOrWhiteSpace(albHostname)
+            ? $"https://{albHostname}"
+            : "https://<YOUR_ALB_HOSTNAME>";
 
     var allowedOrigins = (Environment.GetEnvironmentVariable("ALLOWED_ORIGINS")
         ?? defaultOrigin)
@@ -195,6 +214,8 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+app.UseForwardedHeaders();
 
 if (app.Environment.IsDevelopment())
 {
@@ -215,6 +236,7 @@ app.UseHttpsRedirection();
 app.UseCors("AllowedOrigins");
 
 app.UseRateLimiter();
+app.UseMiddleware<CsrfValidationMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -229,6 +251,7 @@ using (var scope = app.Services.CreateScope())
     {
         var context = scope.ServiceProvider.GetRequiredService<SmartFinanceDbContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
         
         var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
         if (!string.IsNullOrWhiteSpace(databaseUrl))
@@ -240,6 +263,15 @@ using (var scope = app.Services.CreateScope())
         {
             logger.LogInformation("Attempting to ensure database is created...");
             context.Database.EnsureCreated();
+        }
+
+        var demoUser = await context.Users.FirstOrDefaultAsync(u => u.Email == "test@smartfinance.com");
+        if (demoUser != null && demoUser.PasswordHash == "hashed_password_for_test")
+        {
+            demoUser.PasswordHash = passwordHasher.HashPassword("SmartFinance123!");
+            demoUser.UpdatedAt = DateTime.UtcNow;
+            await context.SaveChangesAsync();
+            logger.LogInformation("Updated demo user password hash for the canonical .NET auth flow");
         }
 
         logger.LogInformation("Database initialization completed successfully");

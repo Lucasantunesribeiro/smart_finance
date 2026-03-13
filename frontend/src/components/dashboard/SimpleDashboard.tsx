@@ -57,7 +57,7 @@ export const SimpleDashboard = () => {
               <div className="text-left text-sm text-green-700 space-y-1">
                 <p>• Backend: Connected and Running</p>
                 <p>• Authentication: Working Perfectly</p>
-                <p>• Login Endpoint: /simpleauth/login</p>
+                <p>• Login Endpoint: /auth/login</p>
                 <p>• User Data: Successfully Retrieved</p>
               </div>
             </div>

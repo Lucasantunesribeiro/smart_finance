@@ -4,15 +4,6 @@ const isProd = process.env.NODE_ENV === 'production';
 
 const nextConfig = {
   output: 'standalone',
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  experimental: {
-    typedRoutes: true,
-  },
   async headers() {
     const scriptSrc = ["'self'", "'unsafe-inline'"];
     if (!isProd) {
@@ -30,11 +21,16 @@ const nextConfig = {
       `script-src ${scriptSrc.join(' ')}`,
       (() => {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+        const signalrUrl = process.env.NEXT_PUBLIC_SIGNALR_URL || '';
         let origin = '';
+        let signalrOrigin = '';
         if (apiUrl) {
           try { origin = new URL(apiUrl).origin; } catch { origin = apiUrl; }
         }
-        return `connect-src 'self'${origin ? ' ' + origin : ''}`;
+        if (signalrUrl) {
+          try { signalrOrigin = new URL(signalrUrl).origin; } catch { signalrOrigin = signalrUrl; }
+        }
+        return `connect-src 'self' ws: wss:${origin ? ' ' + origin : ''}${signalrOrigin ? ' ' + signalrOrigin : ''}`;
       })(),
     ].join('; ');
 
@@ -57,6 +53,14 @@ const nextConfig = {
       {
         source: '/api/:path*',
         destination: `${backendUrl}/api/:path*`,
+      },
+      {
+        source: '/financehub',
+        destination: `${backendUrl}/financehub`,
+      },
+      {
+        source: '/financehub/:path*',
+        destination: `${backendUrl}/financehub/:path*`,
       },
     ];
   },

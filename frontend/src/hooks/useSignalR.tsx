@@ -18,86 +18,74 @@ export function SignalRProvider({ children }: { children: ReactNode }) {
   const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
-    // Temporariamente desabilitado para evitar erro 401
-    if (false && isAuthenticated && user) {
-      const hubUrl = process.env.NEXT_PUBLIC_SIGNALR_URL || 'http://localhost:5000/financehub';
-
-      const newConnection = new HubConnectionBuilder()
-        .withUrl(hubUrl)
-        .withAutomaticReconnect()
-        .configureLogging(LogLevel.Information)
-        .build();
-
-      newConnection.start()
-        .then(() => {
-          console.log('SignalR connected');
-          setIsConnected(true);
-          setConnection(newConnection);
-          
-          newConnection.invoke('JoinDashboardGroup').catch((err) => {
-            console.error('Error joining dashboard group:', err);
-          });
-        })
-        .catch((err) => {
-          console.error('SignalR connection error:', err);
-        });
-
-      newConnection.on('TransactionCreated', (transaction) => {
-        toast.success(`New transaction created: ${transaction.description}`);
-        console.log('Transaction created:', transaction);
-      });
-
-      newConnection.on('TransactionUpdated', (transaction) => {
-        toast.info(`Transaction updated: ${transaction.description}`);
-        console.log('Transaction updated:', transaction);
-      });
-
-      newConnection.on('TransactionDeleted', (transactionId) => {
-        toast.info('Transaction deleted');
-        console.log('Transaction deleted:', transactionId);
-      });
-
-      newConnection.on('AccountBalanceUpdated', (account) => {
-        toast.info(`Account balance updated: ${account.name}`);
-        console.log('Account balance updated:', account);
-      });
-
-      newConnection.on('BudgetAlert', (alert) => {
-        toast.warning(`Budget alert: ${alert.message}`);
-        console.log('Budget alert:', alert);
-      });
-
-      newConnection.on('ReportGenerated', (report) => {
-        toast.success(`Report generated: ${report.name}`);
-        console.log('Report generated:', report);
-      });
-
-      newConnection.onclose(() => {
-        setIsConnected(false);
-        setConnection(null);
-        console.log('SignalR disconnected');
-      });
-
-      newConnection.onreconnected(() => {
-        setIsConnected(true);
-        console.log('SignalR reconnected');
-        
-        newConnection.invoke('JoinDashboardGroup').catch((err) => {
-          console.error('Error rejoining dashboard group:', err);
-        });
-      });
-
-      return () => {
-        newConnection.stop();
-      };
-    } else {
-      if (connection) {
-        connection.stop();
-        setConnection(null);
-        setIsConnected(false);
-      }
+    if (!isAuthenticated || !user) {
+      setIsConnected(false);
+      setConnection(null);
+      return;
     }
-  }, [isAuthenticated, user, connection]);
+
+    const configuredHubUrl = process.env.NEXT_PUBLIC_SIGNALR_URL || '/financehub';
+    const hubUrl = configuredHubUrl.startsWith('http')
+      ? configuredHubUrl
+      : `${window.location.origin}${configuredHubUrl}`;
+
+    const newConnection = new HubConnectionBuilder()
+      .withUrl(hubUrl, { withCredentials: true })
+      .withAutomaticReconnect()
+      .configureLogging(LogLevel.Information)
+      .build();
+
+    newConnection.on('TransactionCreated', (transaction) => {
+      toast.success(`New transaction created: ${transaction.description}`);
+    });
+
+    newConnection.on('TransactionUpdated', (transaction) => {
+      toast.info(`Transaction updated: ${transaction.description}`);
+    });
+
+    newConnection.on('TransactionDeleted', () => {
+      toast.info('Transaction deleted');
+    });
+
+    newConnection.on('AccountBalanceUpdated', (account) => {
+      toast.info(`Account balance updated: ${account.name}`);
+    });
+
+    newConnection.on('BudgetAlert', (alert) => {
+      toast.warning(`Budget alert: ${alert.message}`);
+    });
+
+    newConnection.on('ReportGenerated', (report) => {
+      toast.success(`Report generated: ${report.name}`);
+    });
+
+    newConnection.onclose(() => {
+      setIsConnected(false);
+      setConnection(null);
+    });
+
+    newConnection.onreconnected(async () => {
+      setIsConnected(true);
+      await newConnection.invoke('JoinDashboardGroup');
+    });
+
+    void newConnection
+      .start()
+      .then(async () => {
+        setIsConnected(true);
+        setConnection(newConnection);
+        await newConnection.invoke('JoinDashboardGroup');
+      })
+      .catch((error) => {
+        console.error('SignalR connection error:', error);
+      });
+
+    return () => {
+      setIsConnected(false);
+      setConnection(null);
+      void newConnection.stop();
+    };
+  }, [isAuthenticated, user]);
 
   return (
     <SignalRContext.Provider value={{ connection, isConnected }}>

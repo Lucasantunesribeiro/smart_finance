@@ -1,22 +1,13 @@
 import { api } from '@/lib/api';
-import { 
-  LoginRequest, 
-  RegisterRequest, 
-  AuthResponse
+import {
+  AuthResponse,
+  LoginRequest,
+  RegisterRequest,
 } from '@/types/auth';
 
 export const authService = {
   async login(credentials: LoginRequest): Promise<AuthResponse> {
-    // Temporarily use simple auth until backend is restarted with fixes
-    const response = await api.post<AuthResponse>('/simpleauth/login', credentials);
-    if (typeof window !== 'undefined') {
-      if (response.data.accessToken) {
-        localStorage.setItem('accessToken', response.data.accessToken);
-      }
-      if (response.data.refreshToken) {
-        localStorage.setItem('refreshToken', response.data.refreshToken);
-      }
-    }
+    const response = await api.post<AuthResponse>('/auth/login', credentials);
     return response.data;
   },
 
@@ -26,29 +17,16 @@ export const authService = {
   },
 
   async refreshToken(): Promise<AuthResponse> {
-    const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
-    const response = await api.post<AuthResponse>('/simpleauth/refresh', { refreshToken });
-    if (typeof window !== 'undefined') {
-      if (response.data.accessToken) {
-        localStorage.setItem('accessToken', response.data.accessToken);
-      }
-      if (response.data.refreshToken) {
-        localStorage.setItem('refreshToken', response.data.refreshToken);
-      }
-    }
+    const response = await api.post<AuthResponse>('/auth/refresh', {});
     return response.data;
   },
 
   async logout(): Promise<void> {
-    await api.post('/simpleauth/logout');
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-    }
+    await api.post('/auth/logout', {});
   },
 
   async getSession(): Promise<AuthResponse> {
-    const response = await api.get<AuthResponse>('/simpleauth/me');
+    const response = await api.get<AuthResponse>('/auth/me');
     return response.data;
-  }
+  },
 };

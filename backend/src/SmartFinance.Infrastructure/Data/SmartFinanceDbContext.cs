@@ -191,7 +191,7 @@ public class SmartFinanceDbContext : DbContext
         {
             Id = defaultUserId,
             Email = "test@smartfinance.com",
-            PasswordHash = "hashed_password_for_test", // This will be replaced by actual hash
+            PasswordHash = "NirLg8WLHCBtY/Bxyq2li7B2TbiBNBuhxw8Fqg/mfFET5k0m4FD06dv//48hqA48",
             FirstName = "Test",
             LastName = "User",
             Role = UserRole.User,

@@ -95,6 +95,12 @@ export const ModernLoginForm = () => {
                     'Use temporary credentials provided securely and request access from your administrator.'
                   )}
                 </p>
+                <p>
+                  {localize(
+                    'Demo local: test@smartfinance.com / SmartFinance123!',
+                    'Local demo: test@smartfinance.com / SmartFinance123!'
+                  )}
+                </p>
               </div>
             </div>
 

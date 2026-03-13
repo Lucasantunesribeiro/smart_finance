@@ -1,9 +1,9 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { authService } from '@/services/authService';
-import { User, LoginRequest, RegisterRequest } from '@/types/auth';
+import { LoginRequest, RegisterRequest, User } from '@/types/auth';
 import { toast } from 'sonner';
 
 interface AuthContextType {
@@ -25,42 +25,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const storedUser = localStorage.getItem('user');
-        const accessToken = localStorage.getItem('accessToken');
-        if (!accessToken) {
-          if (storedUser) {
-            localStorage.removeItem('user');
-          }
-          setUser(null);
-          setIsLoading(false);
-          return;
-        }
-
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
-        }
-
         const session = await authService.getSession();
-        localStorage.setItem('user', JSON.stringify(session.user));
         setUser(session.user);
       } catch (error) {
         console.error('Error initializing auth:', error);
-        localStorage.removeItem('user');
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
         setUser(null);
       } finally {
         setIsLoading(false);
       }
     };
 
-    initializeAuth();
+    void initializeAuth();
   }, []);
 
   const loginMutation = useMutation({
     mutationFn: authService.login,
     onSuccess: (data) => {
-      localStorage.setItem('user', JSON.stringify(data.user));
       setUser(data.user);
       toast.success('Login successful');
     },
@@ -73,7 +53,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const registerMutation = useMutation({
     mutationFn: authService.register,
     onSuccess: (data) => {
-      localStorage.setItem('user', JSON.stringify(data.user));
       setUser(data.user);
       toast.success('Registration successful');
     },
@@ -86,13 +65,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logoutMutation = useMutation({
     mutationFn: authService.logout,
     onSuccess: () => {
-      localStorage.removeItem('user');
       setUser(null);
       queryClient.clear();
       toast.success('Logged out successfully');
     },
     onError: (error) => {
-      localStorage.removeItem('user');
       setUser(null);
       queryClient.clear();
       console.error('Logout error:', error);
@@ -116,7 +93,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         isAuthenticated: !!user,
-        isLoading: isLoading || loginMutation.isPending || registerMutation.isPending || logoutMutation.isPending,
+        isLoading:
+          isLoading ||
+          loginMutation.isPending ||
+          registerMutation.isPending ||
+          logoutMutation.isPending,
         login,
         register,
         logout,
