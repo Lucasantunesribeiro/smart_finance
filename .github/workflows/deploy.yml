@@ -21,6 +21,7 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           envs: GH_TOKEN
+          command_timeout: 25m
           script: |
             set -e
             cd /opt/smartfinance
@@ -35,6 +36,12 @@ jobs:
 
             git fetch origin main
             git reset --hard origin/main
+
+            # Load production env vars so docker compose can substitute ${VAR} references
+            # (includes RABBITMQ_CONNECTION_URI and all other runtime secrets)
+            set -a
+            source infrastructure/aws-free-tier/.env.production
+            set +a
 
             docker compose --project-directory . -f infrastructure/aws-free-tier/docker-compose.ec2.yml build
             docker compose --project-directory . -f infrastructure/aws-free-tier/docker-compose.ec2.yml up -d --remove-orphans
