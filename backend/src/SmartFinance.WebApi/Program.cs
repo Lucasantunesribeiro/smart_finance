@@ -26,6 +26,11 @@ using System.Threading.RateLimiting;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Npgsql;
 
+// Npgsql v6+ requires DateTimeKind.Utc for timestamptz columns by default.
+// Query parameters bound from URL strings arrive as Kind=Unspecified.
+// This switch restores the pre-v6 behaviour so dates are accepted regardless of Kind.
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 Activity.DefaultIdFormat = ActivityIdFormat.W3C;
 Activity.ForceDefaultIdFormat = true;
