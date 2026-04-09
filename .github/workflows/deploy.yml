@@ -39,8 +39,16 @@ jobs:
 
             # Load production env vars so docker compose can substitute ${VAR} references
             # (includes RABBITMQ_CONNECTION_URI and all other runtime secrets)
+            # This file must be pre-created on the server; it is never committed to git.
+            ENV_FILE="infrastructure/aws-free-tier/.env.production"
+            if [ ! -f "$ENV_FILE" ]; then
+              echo "ERROR: $ENV_FILE not found on the server."
+              echo "Create it from .env.production.example before deploying:"
+              echo "  scp .env.production ubuntu@<EC2_HOST>:/opt/smartfinance/infrastructure/aws-free-tier/.env.production"
+              exit 1
+            fi
             set -a
-            source infrastructure/aws-free-tier/.env.production
+            source "$ENV_FILE"
             set +a
 
             docker compose --project-directory . -f infrastructure/aws-free-tier/docker-compose.ec2.yml build
