@@ -1,0 +1,8 @@
+title = "SmartFinance Gitleaks Config"
+
+[allowlist]
+  description = "EF Core migration and seed files contain seeded demo PasswordHash fixtures, not real secrets"
+  paths = [
+    '''backend/src/SmartFinance\.Infrastructure/Data/Migrations/''',
+    '''backend/src/SmartFinance\.Infrastructure/Data/SmartFinanceDbContext\.cs''',
+  ]
