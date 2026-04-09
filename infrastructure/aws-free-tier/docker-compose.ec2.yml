@@ -72,9 +72,9 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       DB_SSL: ${DB_SSL}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
-      JWT_ISSUER: ${JWT_ISSUER}
-      JWT_AUDIENCE: ${JWT_AUDIENCE}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      Jwt__Issuer: ${JWT_ISSUER}
+      Jwt__Audience: ${JWT_AUDIENCE}
+      Jwt__SecretKey: ${JWT_SECRET_KEY}
       COOKIE_SECURE: ${COOKIE_SECURE}
       COOKIE_SAMESITE: ${COOKIE_SAMESITE}
       Messaging__RabbitMq__Enabled: 'true'
