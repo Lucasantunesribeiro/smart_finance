@@ -168,9 +168,9 @@ docs/adr/        Decisões de arquitetura
 
 ## Limitações conhecidas
 
-- **Usuário de demonstração**: a migration inicial (`HasData`) cria `test@smartfinance.com` com hash de
-  senha fixo no código, e `Program.cs` contém a senha de demonstração em texto. O usuário existe em
-  qualquer banco migrado, inclusive produção.
+- **Usuário de demonstração**: só é criado com `DEMO_SEED=true` e `DEMO_USER_PASSWORD` (8+ caracteres;
+  e-mail em `DEMO_USER_EMAIL`, padrão `test@smartfinance.com`). A migration `RemoveDemoUserSeed` remove o
+  usuário antigo do `HasData` (senha pública) ou, se ele tiver dados, invalida o hash sem apagar nada.
 - **Transferências** (`TransactionType.Transfer`) não alteram saldo; não há conta de destino.
 - **Status da transação** não afeta o saldo: uma transação `Pending` já soma ou subtrai.
 - **SQLite** (dev) não roda as migrations (usa `EnsureCreated`), e as somas de orçamento/categoria
