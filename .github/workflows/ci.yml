@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dotnet:
+    name: Backend (.NET 8)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('backend/**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - name: Restore
+        run: dotnet restore SmartFinance.sln
+      - name: Build
+        run: dotnet build SmartFinance.sln --no-restore --configuration Release
+      - name: Test
+        run: dotnet test SmartFinance.sln --no-build --configuration Release --verbosity normal
+
+  frontend:
+    name: Frontend (Next.js)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Type check
+        run: npm run type-check
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: /api/v1
+          NEXT_PUBLIC_SIGNALR_URL: /financehub
+          NEXT_PUBLIC_PAYMENT_API_URL: /api/v1/payments
+
+  microservice:
+    name: Microservice (Node)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: microservice
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          cache-dependency-path: microservice/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Syntax check
+        run: node --check server.js
+      - name: Test
+        run: npm test
