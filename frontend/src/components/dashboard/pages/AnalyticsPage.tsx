@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { analyticsService } from '@/services/analyticsService';
 import { formatCurrency } from '@/lib/utils';
+import { averageMoney } from '@/lib/money';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -358,7 +359,7 @@ export const AnalyticsPage = () => {
                   {localize('Média Mensal de Receita', 'Average Monthly Income')}
                 </p>
                 <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(analyticsData.reduce((sum, d) => sum + d.income, 0) / analyticsData.length || 0)}
+                  {formatCurrency(averageMoney(analyticsData.map(d => d.income)))}
                 </p>
                 <p className="text-sm text-green-600 mt-1">
                   {localize(
@@ -382,7 +383,7 @@ export const AnalyticsPage = () => {
                   {localize('Média Mensal de Despesas', 'Average Monthly Expenses')}
                 </p>
                 <p className="text-2xl font-bold text-red-600">
-                  {formatCurrency(analyticsData.reduce((sum, d) => sum + d.expense, 0) / analyticsData.length || 0)}
+                  {formatCurrency(averageMoney(analyticsData.map(d => d.expense)))}
                 </p>
                 <p className="text-sm text-red-600 mt-1">
                   {localize(
@@ -406,7 +407,7 @@ export const AnalyticsPage = () => {
                   {localize('Saldo Líquido Médio', 'Average Net Balance')}
                 </p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {formatCurrency(analyticsData.reduce((sum, d) => sum + d.net, 0) / analyticsData.length || 0)}
+                  {formatCurrency(averageMoney(analyticsData.map(d => d.net)))}
                 </p>
                 <p className="text-sm text-blue-600 mt-1">
                   {localize('Diferença entre receitas e despesas', 'Difference between income and expenses')}

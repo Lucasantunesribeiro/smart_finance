@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Edit3, Trash2, Plus, Search, Filter, Eye, EyeOff, TrendingUp, BarChart3 } from 'lucide-react';
 import { Category, CategoryType } from '@/types/category';
 import { formatCurrency } from '@/lib/utils';
+import { divideMoney } from '@/lib/money';
 
 interface CategoryListProps {
   categories: Category[];
@@ -243,7 +244,7 @@ export const CategoryList = ({ categories, isLoading, onEdit, onDelete, onCreate
                     {/* Average per transaction */}
                     {category.transactionCount > 0 && (
                       <div className="text-xs text-gray-500 text-center pt-2 border-t border-gray-100">
-                        Média: {formatCurrency(category.totalAmount / category.transactionCount)} por transação
+                        Média: {formatCurrency(divideMoney(category.totalAmount, category.transactionCount))} por transação
                       </div>
                     )}
                   </div>

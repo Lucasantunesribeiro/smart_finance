@@ -1,200 +1,186 @@
 # SmartFinance
 
-> Plataforma full-stack de gestão financeira pessoal com frontend Next.js e backend .NET 8 como trilha canônica de produção
+Aplicação de finanças pessoais: contas, transações, categorias, orçamentos e relatórios.
+Frontend em Next.js 14 e API principal em .NET 8 com PostgreSQL. Há também um serviço Node.js
+separado (`microservice/`) que não faz parte do `docker-compose.yml` padrão.
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-000?logo=next.js&logoColor=white)](https://nextjs.org/)
-[![.NET](https://img.shields.io/badge/.NET%208-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
-[![AWS](https://img.shields.io/badge/AWS-FF9900?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/)
-[![CI](https://github.com/Lucasantunesribeiro/smart_finance/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/Lucasantunesribeiro/smart_finance/actions/workflows/ci-cd.yml)
+[![CI](https://github.com/Lucasantunesribeiro/smart_finance/actions/workflows/ci.yml/badge.svg)](https://github.com/Lucasantunesribeiro/smart_finance/actions/workflows/ci.yml)
 
-## Visão Geral
+## O que o código faz
 
-SmartFinance cobre o ciclo completo de um produto SaaS financeiro: autenticação segura, segregação de dados por usuário, contas, transações, categorias, orçamentos, analytics e mensageria assíncrona. O backend .NET 8 é a implementação principal do produto; o microserviço Node.js permanece como bounded context isolado para pagamentos e integrações especializadas.
+- **Autenticação**: login com JWT em cookies HttpOnly (`sf_at`, `sf_rt`), refresh token e CSRF (`AuthController`, `CsrfValidationMiddleware`).
+- **Contas**: CRUD e saldo consolidado por usuário.
+- **Transações**: criar, editar, excluir (soft delete), filtrar e paginar. Cada operação atualiza o saldo da conta.
+- **Categorias**: CRUD, hierarquia pai/filho e estatísticas (total e média por categoria).
+- **Orçamentos**: valor alocado por período e categoria, gasto calculado a partir das despesas.
+- **Analytics**: receitas/despesas por período, tendências, fluxo de caixa e resumo.
+- **Eventos**: criação de transação grava um evento no outbox; um worker publica no RabbitMQ e um consumer repassa ao SignalR (`/financehub`). Ver [ADR 0003](docs/adr/0003-outbox-para-eventos-de-transacao.md).
+- **Métricas**: Prometheus em `/metrics`; health check em `/health`.
 
-| Camada | Tecnologia | Status |
-|--------|-----------|--------|
-| Frontend | Next.js 14, React 18, TypeScript, TailwindCSS, shadcn/ui | Produção |
-| Backend principal | .NET 8, Clean Architecture, CQRS/MediatR, EF Core, RabbitMQ | Produção |
-| Microserviço isolado | Node.js/TypeScript, Bull/Redis, MongoDB | Suporte a pagamentos |
-| Infraestrutura | AWS EC2 + Docker Compose (atual) / ECS Fargate + RDS (Terraform) | Ambos |
+### Dinheiro
 
-## Funcionalidades
+- Backend: todo valor monetário é `decimal`, coluna `numeric(18,2)` (`decimal(18,2)` no EF Core).
+  As regras ficam em `SmartFinance.Domain.Common.Money`. O arredondamento é sempre para centavos com
+  `MidpointRounding.AwayFromZero`. Valores zero ou negativos em transações e orçamentos retornam 400.
+  Ver [ADR 0001](docs/adr/0001-dinheiro-em-decimal-no-backend.md).
+- Frontend e microservice: somas, diferenças e médias são feitas em centavos inteiros
+  (`frontend/src/lib/money.ts`, `microservice/money.js`). A exibição usa `Intl.NumberFormat` pt-BR/BRL.
+  Ver [ADR 0002](docs/adr/0002-centavos-inteiros-no-frontend-e-microservice.md).
 
-- **Autenticação** — JWT com refresh token rotation, cookies HttpOnly, CSRF protection
-- **Contas** — CRUD com saldo consolidado por usuário
-- **Transações** — criação, edição, filtros por período/categoria/conta, paginação
-- **Categorias** — hierarquia pai/filho, isolamento por usuário, stats de uso
-- **Orçamentos** — períodos configuráveis, alertas de utilização
-- **Analytics** — income/expenses por período, tendências com variação %, cash flow, financial summary com savings rate e budget utilization
-- **Multi-idioma** — pt-BR / en-US com toggle dinâmico
+## Arquitetura
 
-## Stack
+```mermaid
+flowchart LR
+    U[Navegador] -->|HTTP| FE[frontend<br/>Next.js 14 :3000]
+    FE -->|/api/v1 via BACKEND_URL| API[backend<br/>ASP.NET Core 8 :5000]
+    U -.->|SignalR /financehub| API
+    API -->|EF Core / Npgsql| PG[(PostgreSQL 15)]
+    API -->|Outbox publisher| MQ[(RabbitMQ)]
+    MQ -->|TransactionCreated consumer| API
+    PROM[Prometheus<br/>perfil observability] -->|/metrics| API
+    GRAF[Grafana] --> PROM
 
-### Frontend
-- **Next.js 14** (App Router), **React 18**, **TypeScript**
-- **TailwindCSS**, **shadcn/ui** (Radix UI)
-- **TanStack Query** (server state), **Axios**
-- **Recharts** (gráficos), **date-fns**
+    subgraph backend
+      direction TB
+      WebApi --> Application --> Domain
+      Infrastructure --> Application
+      WebApi --> Infrastructure
+    end
+```
 
-### Backend principal (.NET 8)
-- **Clean Architecture** (Domain → Application → Infrastructure → WebApi)
-- **CQRS** com **MediatR** (Auth + Transactions end-to-end; Analytics com queries EF Core reais)
-- **Entity Framework Core** (PostgreSQL prod / SQLite dev)
-- **FluentValidation**, **Serilog**, **Swagger**, **SignalR**
-- **RabbitMQ**, **Outbox Pattern**, idempotência no consumer e política de retry/DLQ
+Camadas do backend (`backend/src`):
 
-### Microserviço complementar (Node.js/TypeScript)
-- Contexto isolado de pagamentos e banking
-- **Bull + Redis**, **MongoDB**, **JWT**, **Winston**
-- Mantido fora do fluxo principal do produto para preservar a arquitetura canônica em .NET
+| Projeto | Responsabilidade |
+|---|---|
+| `SmartFinance.Domain` | Entidades, enums, regras de dinheiro (`Money`, `Account.ApplyTransaction`) |
+| `SmartFinance.Application` | Commands/queries MediatR de transações e autenticação, DTOs |
+| `SmartFinance.Infrastructure` | `DbContext`, migrations (PostgreSQL), repositórios, serviços de contas/categorias/orçamentos/analytics |
+| `SmartFinance.WebApi` | Controllers, middlewares (CSRF, correlation id), SignalR, outbox/consumer RabbitMQ |
 
-### Infraestrutura
-- **Docker Compose** — postgres + rabbitmq + backend .NET + frontend
-- **Nginx** — reverse proxy, rate limiting, security headers
-- **Terraform** — trilha EC2 simples e trilha enterprise ECS/Fargate
-- **AWS**: EC2, RDS, ECS Fargate, ALB, CloudFront, WAF, Secrets Manager, KMS, GuardDuty, Security Hub, CloudTrail
+Sem `DATABASE_URL`, a API usa SQLite (`ConnectionStrings:DefaultConnection`) e `EnsureCreated`
+em vez de migrations. Isso serve só para desenvolvimento local.
 
-### CI/CD
-- **GitHub Actions**: lint/type-check/build (frontend), syntax check (microservice), dotnet build/test (.NET), CodeQL (JS + C#), Trivy, Gitleaks
-
-## Como Rodar
+## Como rodar
 
 ### Pré-requisitos
-- Docker e Docker Compose
-- Node.js 20+ (dev local)
-- .NET 8 SDK (backend principal)
 
-### Docker (recomendado)
+- Docker com Docker Compose v2
+- Para rodar fora do Docker: .NET 8 SDK e Node.js 20 (`.nvmrc`)
+
+### Docker Compose
+
 ```bash
-git clone https://github.com/Lucasantunesribeiro/smart_finance.git
-cd smart_finance
-
 cp .env.example .env
-# Configure DATABASE_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET, JWT_SECRET_KEY
-
-docker compose up -d
-
-# Frontend: http://localhost:3000
-# API:      http://localhost:5000/api/v1
-# Docs:     http://localhost:5000/docs
-# Metrics:  http://localhost:5000/metrics
+# Troque todos os valores CHANGE_THIS... por segredos fortes
+docker compose up -d --build
 ```
 
-### Observabilidade local
-```bash
-docker compose --env-file .env.example --profile observability up -d prometheus grafana
+| Serviço | Endereço |
+|---|---|
+| Frontend | http://localhost:3000 |
+| API | http://localhost:5000/api/v1 |
+| Health | http://localhost:5000/health |
+| Métricas | http://localhost:5000/metrics |
+| RabbitMQ (management) | http://localhost:15672 |
 
-# Prometheus: http://localhost:9090
-# Grafana:    http://localhost:3002
+Observabilidade opcional (Prometheus em :9090, Grafana em :3002):
+
+```bash
+docker compose --profile observability up -d prometheus grafana
 ```
 
-**Credenciais de teste (seed):**
-- Email: `test@smartfinance.com` / Senha: `SmartFinance123!`
+Com `DATABASE_URL` definido, a API aplica as migrations ao iniciar.
 
-### Frontend (dev local)
-```bash
-cd frontend && npm install && npm run dev
-```
+### Local, sem Docker
 
-### Microservice Node.js (dev local)
 ```bash
-cd microservice && npm install
-npm run db:migrate   # roda migrations
-npm run db:seed      # popula dados demo
-npm run dev          # hot reload
-```
-
-### Backend .NET
-```bash
+# Backend (usa SQLite se DATABASE_URL não estiver definido)
 cd backend
-dotnet build SmartFinance.sln
 dotnet run --project src/SmartFinance.WebApi
-# Swagger: http://localhost:5000
+# Em Development o Swagger fica na raiz: http://localhost:5000
+
+# Frontend
+cd frontend
+npm ci
+npm run dev
 ```
+
+Microservice Node (opcional, fora do compose; precisa de PostgreSQL próprio):
+
+```bash
+cd microservice
+npm ci
+npm run db:migrate
+node server.js
+```
+
+## Variáveis de ambiente
+
+Arquivo de exemplo: [`.env.example`](.env.example). Só placeholders; nunca commite um `.env` real.
+
+| Variável | Usada por | Obrigatória | Descrição |
+|---|---|---|---|
+| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | compose (postgres, backend) | sim | Banco PostgreSQL; o compose monta o `DATABASE_URL` do backend |
+| `RABBITMQ_USER`, `RABBITMQ_PASSWORD` | compose (rabbitmq, backend) | sim | Credenciais do RabbitMQ |
+| `JWT_SECRET_KEY` | backend | sim | Chave de assinatura do JWT |
+| `JWT_ISSUER`, `JWT_AUDIENCE` | backend | não | Padrão `SmartFinance` / `SmartFinanceUsers` |
+| `DATABASE_URL` | backend | não | `postgres://user:pass@host:5432/db`. Sem ela, SQLite |
+| `DB_SSL` | backend | não | `true` para exigir SSL no PostgreSQL |
+| `ALLOWED_ORIGINS` | backend | não | Origens CORS separadas por vírgula |
+| `COOKIE_SECURE`, `COOKIE_SAMESITE`, `COOKIE_DOMAIN` | backend | não | Atributos dos cookies de sessão |
+| `ASPNETCORE_ENVIRONMENT` | backend | não | `Development` habilita Swagger |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | backend | não | Exportador OpenTelemetry |
+| `Messaging__RabbitMq__*` | backend | não | Liga a mensageria e ajusta retry/polling (ver `docker-compose.yml`) |
+| `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SIGNALR_URL` | frontend (build) | não | Caminhos da API e do hub |
+| `BACKEND_URL` | frontend | não | URL interna do backend para o proxy do Next |
+| `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | microservice | só para o microservice | Segredos do serviço Node |
+
+## Como testar
+
+```bash
+# Backend: xUnit (domínio, handlers, serviços em SQLite/InMemory, JSON)
+cd backend && dotnet test SmartFinance.sln
+
+# Frontend: lint, tipos, Jest
+cd frontend && npm ci && npm run lint && npm run type-check && npm test
+
+# Microservice: Jest
+cd microservice && npm ci && npm test
+```
+
+Os testes de dinheiro ficam em `backend/tests/SmartFinance.Tests/Financial/`,
+`frontend/src/lib/money.test.ts` e `microservice/tests/money.test.ts`.
+
+O CI (`.github/workflows/ci.yml`) roda esses mesmos passos em `pull_request` e `push` para `main`.
+Os workflows de deploy (`deploy.yml`, `deploy-github-pages.yml`) não rodam em pull request.
 
 ## Estrutura
 
 ```
-smartfinance/
-├── frontend/                  # Next.js 14
-│   └── src/
-│       ├── app/               # App Router (/, /login, /dashboard)
-│       ├── components/        # Dashboard, dialogs, analytics
-│       ├── hooks/             # useAuth, useCategories, useSignalR
-│       └── services/          # axios wrappers por domínio
-├── microservice/              # Node.js/TypeScript para pagamentos isolados
-│   ├── src/routes/            # rotas de pagamentos e banking
-│   ├── src/services/          # filas, fraude e integração bancária
-│   ├── src/models/            # documentos MongoDB
-│   └── tests/                 # testes unitários e de rotas
-├── backend/                   # .NET 8 principal
-│   └── src/
-│       ├── SmartFinance.Domain/
-│       ├── SmartFinance.Application/
-│       ├── SmartFinance.Infrastructure/
-│       └── SmartFinance.WebApi/
-├── infrastructure/
-│   ├── aws-free-tier/         # EC2 + Docker Compose
-│   └── terraform-enterprise/  # ECS Fargate + RDS + WAF
-├── nginx/                     # configs de reverse proxy
-└── docker-compose.yml
+backend/         API .NET 8 (Domain, Application, Infrastructure, WebApi) e testes
+frontend/        Next.js 14 (App Router), componentes do dashboard, serviços axios
+microservice/    Serviço Node (server.js + PostgreSQL) e contexto TS de pagamentos (src/, MongoDB)
+infrastructure/  Compose para EC2 e Terraform
+nginx/           Configurações de reverse proxy
+monitoring/      Prometheus e dashboards do Grafana
+docs/adr/        Decisões de arquitetura
 ```
 
-## Variáveis de Ambiente
+## Limitações conhecidas
 
-```env
-# Obrigatórias
-POSTGRES_DB=smartfinance
-POSTGRES_USER=smartfinance
-POSTGRES_PASSWORD=mínimo-16-caracteres
-RABBITMQ_USER=smartfinance
-RABBITMQ_PASSWORD=mínimo-16-caracteres
-JWT_ACCESS_SECRET=mínimo-32-caracteres
-JWT_REFRESH_SECRET=mínimo-32-caracteres
-JWT_SECRET_KEY=mínimo-32-caracteres
-
-# Opcionais
-ALLOWED_ORIGINS=http://localhost:3000
-AUTO_MIGRATE=true
-SEED_DEMO_DATA=true
-NEXT_PUBLIC_API_URL=/api/v1
-```
-
-Ver `.env.example` para configuração completa.
-
-## Deploy
-
-### AWS EC2 (atual)
-```bash
-scp -r . ubuntu@<ip>:/opt/smartfinance
-ssh ubuntu@<ip> "cd /opt/smartfinance && docker compose up -d --build"
-```
-
-### Terraform Enterprise
-```bash
-cd infrastructure/terraform-enterprise
-terraform init && terraform plan && terraform apply
-```
-
-## Segurança
-
-- JWT access tokens (15min) + refresh tokens (7d) com rotation
-- Cookies HttpOnly (`sf_at`, `sf_rt`) + CSRF token obrigatório em mutações
-- Rate limiting por IP e por usuário autenticado
-- Input validation com Joi (Node.js) e FluentValidation (.NET)
-- SQL parametrizado em todas as queries (sem ORM raw strings)
-- CSP headers, CORS configurado, `server_tokens off` no Nginx
-- Sem endpoints de debug ou logging de credenciais no código
-
-## Performance
-
-| Métrica | Valor |
-|---------|-------|
-| Memory (microservice) | ~87 MB / 1 GB |
-| Response time (p95) | < 200 ms |
-| Cost/month (EC2 Free Tier) | $0 |
+- **Usuário de demonstração**: a migration inicial (`HasData`) cria `test@smartfinance.com` com hash de
+  senha fixo no código, e `Program.cs` contém a senha de demonstração em texto. O usuário existe em
+  qualquer banco migrado, inclusive produção.
+- **Transferências** (`TransactionType.Transfer`) não alteram saldo; não há conta de destino.
+- **Status da transação** não afeta o saldo: uma transação `Pending` já soma ou subtrai.
+- **SQLite** (dev) não roda as migrations (usa `EnsureCreated`), e as somas de orçamento/categoria
+  são feitas em memória.
+- **Seed com `DateTime.UtcNow`** em `HasData`: `dotnet ef migrations add` sempre gera `UpdateData`
+  dos registros de seed, mesmo sem mudança de modelo.
+- **Microservice TypeScript** (`microservice/src`, pagamentos com MongoDB/Bull) não é iniciado pelo
+  Dockerfile (`node server.js`) e ainda usa `number` puro em taxas e reembolsos.
+- Não há FluentValidation registrado no backend; a validação é feita nos controllers e handlers.
 
 ## Licença
 
-MIT © 2026
+MIT

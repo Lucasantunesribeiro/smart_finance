@@ -15,6 +15,7 @@ const {
   transactionCreateSchema,
   transactionUpdateSchema,
 } = require('./validation');
+const { subtractMoney } = require('./money');
 
 // ==================== UTILITY FUNCTIONS ====================
 
@@ -499,7 +500,7 @@ async function handleTransactionsSummary(req, res) {
     const summary = await store.getAnalyticsSummary(req.user.id);
     const totalIncome = Number(summary.total_income || 0);
     const totalExpense = Number(summary.total_expenses || 0);
-    const netAmount = totalIncome - totalExpense;
+    const netAmount = subtractMoney(totalIncome, totalExpense);
 
     sendJson(res, 200, {
       totalIncome,

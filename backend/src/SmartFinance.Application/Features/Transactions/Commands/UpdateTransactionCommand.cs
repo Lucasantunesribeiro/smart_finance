@@ -1,6 +1,7 @@
 using MediatR;
 using SmartFinance.Application.Common.DTOs;
 using SmartFinance.Application.Common.Utils;
+using SmartFinance.Domain.Common;
 using SmartFinance.Domain.Entities;
 using SmartFinance.Domain.Enums;
 using SmartFinance.Domain.Interfaces;
@@ -63,10 +64,11 @@ namespace SmartFinance.Application.Features.Transactions.Commands
 
             var originalAmount = transaction.Amount;
             var originalAccountId = transaction.AccountId;
+            var originalType = transaction.Type;
 
             // Update transaction properties
             if (request.Amount.HasValue)
-                transaction.Amount = request.Amount.Value;
+                transaction.Amount = Money.NormalizePositiveAmount(request.Amount.Value);
 
             if (!string.IsNullOrEmpty(request.Description))
                 transaction.Description = request.Description;
@@ -131,10 +133,13 @@ namespace SmartFinance.Application.Features.Transactions.Commands
 
             await _unitOfWork.Repository<Transaction>().UpdateAsync(transaction, cancellationToken);
 
-            // Update account balances if amount or account changed
-            if (originalAmount != transaction.Amount || originalAccountId != transaction.AccountId)
+            // Update account balances if amount, account or type changed
+            // (mudar Receita <-> Despesa inverte o efeito no saldo).
+            if (originalAmount != transaction.Amount
+                || originalAccountId != transaction.AccountId
+                || originalType != transaction.Type)
             {
-                await UpdateAccountBalances(originalAccountId, transaction, originalAmount, cancellationToken);
+                await UpdateAccountBalances(originalAccountId, originalType, originalAmount, transaction, cancellationToken);
             }
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -144,24 +149,21 @@ namespace SmartFinance.Application.Features.Transactions.Commands
             return await MapToDto(transaction, cancellationToken);
         }
 
-        private async Task UpdateAccountBalances(Guid originalAccountId, Transaction transaction, decimal originalAmount, CancellationToken cancellationToken)
+        private async Task UpdateAccountBalances(
+            Guid originalAccountId,
+            TransactionType originalType,
+            decimal originalAmount,
+            Transaction transaction,
+            CancellationToken cancellationToken)
         {
-            // Revert original transaction from original account
+            // Revert original transaction (tipo e valor originais) from original account
             if (originalAccountId != Guid.Empty)
             {
                 var originalAccount = await _unitOfWork.Repository<Account>()
                     .GetByIdAsync(originalAccountId, cancellationToken);
                 if (originalAccount != null)
                 {
-                    switch (transaction.Type)
-                    {
-                        case TransactionType.Income:
-                            originalAccount.Balance -= originalAmount;
-                            break;
-                        case TransactionType.Expense:
-                            originalAccount.Balance += originalAmount;
-                            break;
-                    }
+                    originalAccount.RevertTransaction(originalType, originalAmount);
                     await _unitOfWork.Repository<Account>().UpdateAsync(originalAccount, cancellationToken);
                 }
             }
@@ -171,15 +173,7 @@ namespace SmartFinance.Application.Features.Transactions.Commands
                 .GetByIdAsync(transaction.AccountId, cancellationToken);
             if (currentAccount != null)
             {
-                switch (transaction.Type)
-                {
-                    case TransactionType.Income:
-                        currentAccount.Balance += transaction.Amount;
-                        break;
-                    case TransactionType.Expense:
-                        currentAccount.Balance -= transaction.Amount;
-                        break;
-                }
+                currentAccount.ApplyTransaction(transaction.Type, transaction.Amount);
                 await _unitOfWork.Repository<Account>().UpdateAsync(currentAccount, cancellationToken);
             }
         }

@@ -1,3 +1,4 @@
+using SmartFinance.Domain.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SmartFinance.Application.Common.DTOs;
@@ -74,7 +75,7 @@ public class AccountService : IAccountService
         {
             Name = request.Name.Trim(),
             Type = request.Type,
-            Balance = request.Balance,
+            Balance = Money.NormalizeSigned(request.Balance),
             Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
             Currency = string.IsNullOrWhiteSpace(request.Currency) ? "USD" : request.Currency.Trim().ToUpperInvariant(),
             IsActive = true,
@@ -114,7 +115,7 @@ public class AccountService : IAccountService
 
         if (request.Balance.HasValue)
         {
-            account.Balance = request.Balance.Value;
+            account.Balance = Money.NormalizeSigned(request.Balance.Value);
         }
 
         if (request.Description != null)

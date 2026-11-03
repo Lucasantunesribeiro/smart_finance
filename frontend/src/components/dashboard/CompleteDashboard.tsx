@@ -37,6 +37,8 @@ import {
   Menu,
   X
 } from 'lucide-react';
+import { subtractMoney } from '@/lib/money';
+import { formatCurrency } from '@/lib/utils';
 
 export const CompleteDashboard = () => {
   const { user, logout } = useAuth();
@@ -97,7 +99,7 @@ export const CompleteDashboard = () => {
   const monthlyIncome = transactionSummary?.totalIncome || 0;
   const monthlyExpenses = transactionSummary?.totalExpense || 0;
   // Calculate real savings as income minus expenses (if positive, otherwise 0)
-  const savings = Math.max(monthlyIncome - monthlyExpenses, 0);
+  const savings = Math.max(subtractMoney(monthlyIncome, monthlyExpenses), 0);
 
   const sidebarItems = [
     { id: 'overview', label: 'Overview', icon: Home },
@@ -115,13 +117,6 @@ export const CompleteDashboard = () => {
     } catch (error) {
       console.error('Logout error:', error);
     }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(amount);
   };
 
   const getStatusColor = (status: TransactionStatus) => {

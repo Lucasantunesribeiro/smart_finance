@@ -132,6 +132,11 @@ public class BudgetsController : ControllerBase
             var budget = await _budgetService.CreateBudgetAsync(userId, request, cancellationToken);
             return CreatedAtAction(nameof(GetBudget), new { id = budget.Id }, budget);
         }
+        catch (ArgumentException ex)
+        {
+            // Valor monetário inválido (zero, negativo ou acima de numeric(18,2)).
+            return BadRequest(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating budget");
@@ -186,6 +191,11 @@ public class BudgetsController : ControllerBase
             }
 
             return Ok(budget);
+        }
+        catch (ArgumentException ex)
+        {
+            // Valor monetário inválido (zero, negativo ou acima de numeric(18,2)).
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {

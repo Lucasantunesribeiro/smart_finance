@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/locale-context';
+import { parseMoneyInput } from '@/lib/money';
 
 interface AddTransactionDialogProps {
   children: React.ReactNode;
@@ -77,7 +78,8 @@ export const AddTransactionDialog = ({ children, onSuccess }: AddTransactionDial
       if (!formData.description.trim()) {
         errors.push(localize('Descrição é obrigatória', 'Description is required'));
       }
-      if (!formData.amount || parseFloat(formData.amount) <= 0) {
+      const parsedAmount = parseMoneyInput(formData.amount);
+      if (parsedAmount === null || parsedAmount <= 0) {
         errors.push(localize('Valor deve ser maior que zero', 'Amount must be greater than zero'));
       }
       if (!formData.type) {
@@ -106,7 +108,7 @@ export const AddTransactionDialog = ({ children, onSuccess }: AddTransactionDial
 
       await transactionService.createTransaction({
         description: formData.description.trim(),
-        amount: parseFloat(formData.amount),
+        amount: parsedAmount ?? 0, // já validado acima (> 0)
         type: parseInt(formData.type, 10),
         categoryId: formData.categoryId,
         accountId: selectedAccountId,

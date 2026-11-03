@@ -1,4 +1,21 @@
 const Joi = require('joi');
+const { MAX_AMOUNT, roundMoney } = require('./money');
+
+/**
+ * Valor monetário positivo: arredondado para centavos (metade para longe do zero) e
+ * rejeitado se virar zero (ex.: 0.004) ou passar do limite de NUMERIC(12,2).
+ */
+const moneyAmount = () =>
+  Joi.number()
+    .positive()
+    .max(MAX_AMOUNT)
+    .custom((value, helpers) => {
+      const rounded = roundMoney(value);
+      if (rounded <= 0) {
+        return helpers.message('{{#label}} must be greater than zero');
+      }
+      return rounded;
+    });
 
 const loginSchema = Joi.object({
   email: Joi.string().email().max(254).required(),
@@ -11,7 +28,7 @@ const refreshSchema = Joi.object({
 
 const transactionCreateSchema = Joi.object({
   description: Joi.string().min(1).max(200).required(),
-  amount: Joi.number().positive().required(),
+  amount: moneyAmount().required(),
   type: Joi.number().valid(0, 1, 2).required(),
   categoryId: Joi.string().guid().required(),
   accountId: Joi.string().guid().required(),
@@ -21,7 +38,7 @@ const transactionCreateSchema = Joi.object({
 
 const transactionUpdateSchema = Joi.object({
   description: Joi.string().min(1).max(200).optional(),
-  amount: Joi.number().positive().optional(),
+  amount: moneyAmount().optional(),
   type: Joi.number().valid(0, 1, 2).optional(),
   categoryId: Joi.string().guid().optional(),
   accountId: Joi.string().guid().optional(),
@@ -68,7 +85,7 @@ const categoryUpdateSchema = Joi.object({
 const budgetCreateSchema = Joi.object({
   name: Joi.string().min(1).max(120).required(),
   description: Joi.string().max(200).allow('').optional(),
-  allocated: Joi.number().positive().required(),
+  allocated: moneyAmount().required(),
   categoryId: Joi.string().guid().allow(null).optional(),
   period: Joi.string().valid('weekly', 'monthly', 'yearly').default('monthly'),
   startDate: Joi.date().iso().optional(),
@@ -79,7 +96,7 @@ const budgetCreateSchema = Joi.object({
 const budgetUpdateSchema = Joi.object({
   name: Joi.string().min(1).max(120).optional(),
   description: Joi.string().max(200).allow('').optional(),
-  allocated: Joi.number().positive().optional(),
+  allocated: moneyAmount().optional(),
   categoryId: Joi.string().guid().allow(null).optional(),
   period: Joi.string().valid('weekly', 'monthly', 'yearly').optional(),
   startDate: Joi.date().iso().optional(),

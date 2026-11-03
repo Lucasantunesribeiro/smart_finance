@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { formatCurrency } from '@/lib/utils';
+import { sumMoney } from '@/lib/money';
 import { Plus, Tag, Eye, Receipt, DollarSign } from 'lucide-react';
 import { Category } from '@/types/category';
 import { useCategories } from '@/hooks/useCategories';
@@ -45,7 +46,7 @@ export const CategoriesPage = () => {
   const activeCategories = categories.filter(cat => cat.isActive);
   const inactiveCategories = categories.filter(cat => !cat.isActive);
   const totalTransactions = categories.reduce((sum, cat) => sum + cat.transactionCount, 0);
-  const totalAmount = categories.reduce((sum, cat) => sum + cat.totalAmount, 0);
+  const totalAmount = sumMoney(categories.map(cat => cat.totalAmount));
 
   // Modal handlers
   const handleCreateNew = () => {

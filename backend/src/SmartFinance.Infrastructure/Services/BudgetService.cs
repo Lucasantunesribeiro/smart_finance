@@ -1,3 +1,4 @@
+using SmartFinance.Domain.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SmartFinance.Application.Common.DTOs;
@@ -128,7 +129,7 @@ public class BudgetService : IBudgetService
         var budget = new Budget
         {
             Name = request.Name.Trim(),
-            Amount = request.Allocated,
+            Amount = Money.NormalizePositiveAmount(request.Allocated, "Allocated"),
             SpentAmount = 0m,
             StartDate = DateTime.SpecifyKind(DateTime.Parse(request.StartDate).Date, DateTimeKind.Utc),
             EndDate = DateTime.SpecifyKind(DateTime.Parse(request.EndDate).Date, DateTimeKind.Utc),
@@ -172,7 +173,7 @@ public class BudgetService : IBudgetService
 
         if (request.Allocated.HasValue)
         {
-            budget.Amount = request.Allocated.Value;
+            budget.Amount = Money.NormalizePositiveAmount(request.Allocated.Value, "Allocated");
         }
 
         if (request.CategoryId != null)
@@ -242,7 +243,7 @@ public class BudgetService : IBudgetService
             totalAllocated += budget.Amount;
             var spent = await GetSpentAmountAsync(userId, budget.CategoryId, budget.StartDate, budget.EndDate, cancellationToken);
             totalSpent += spent;
-            if (budget.Amount > 0 && (spent / budget.Amount) * 100m >= 90m)
+            if (budget.Amount > 0 && Money.Percentage(spent, budget.Amount) >= 90m)
             {
                 overBudgetCount++;
             }
@@ -272,8 +273,8 @@ public class BudgetService : IBudgetService
             query = query.Where(t => t.CategoryId == categoryId.Value);
         }
 
-        var total = await query.SumAsync(t => (double?)(t.Amount < 0 ? -t.Amount : t.Amount), cancellationToken) ?? 0d;
-        return Convert.ToDecimal(total);
+        // Soma em decimal (nunca double) para não perder centavos.
+        return await query.SumMoneyAsync(_context, t => t.Amount < 0 ? -t.Amount : t.Amount, cancellationToken);
     }
 
     private static IQueryable<Budget> ApplySorting(IQueryable<Budget> query, string? sortBy, string? sortOrder)
@@ -293,7 +294,6 @@ public class BudgetService : IBudgetService
     private static BudgetItemDto MapBudgetItem(Guid id, string name, string? description, decimal allocated, decimal spent, Guid? categoryId, string? categoryName, BudgetPeriod period, DateTime startDate, DateTime endDate, bool isActive, DateTime createdAt, DateTime updatedAt)
     {
         var remaining = allocated - spent;
-        var percentage = allocated > 0 ? (spent / allocated) * 100m : 0m;
 
         return new BudgetItemDto
         {
@@ -303,7 +303,7 @@ public class BudgetService : IBudgetService
             Allocated = allocated,
             Spent = spent,
             Remaining = remaining,
-            Percentage = Math.Round(percentage, 2),
+            Percentage = Money.Percentage(spent, allocated),
             CategoryId = categoryId?.ToString(),
             CategoryName = categoryName,
             Period = (int)period,
