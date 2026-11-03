@@ -15,6 +15,7 @@ const {
   budgetCreateSchema,
   budgetUpdateSchema,
 } = require('./validation');
+const { toCents, sumMoney, subtractMoney, percentage: moneyPercentage } = require('./money');
 
 // Data variables (will be injected)
 let store;
@@ -66,8 +67,8 @@ function formatCategoryForFrontend(category) {
 function formatBudgetForFrontend(budget) {
   const spent = Number(budget.spent || 0);
   const allocated = Number(budget.allocated || 0);
-  const remaining = allocated - spent;
-  const percentage = allocated > 0 ? (spent / allocated) * 100 : 0;
+  const remaining = subtractMoney(allocated, spent);
+  const percentage = allocated > 0 ? moneyPercentage(spent, allocated) : 0;
 
   return {
     id: (budget.external_id || budget.id)?.toString(),
@@ -121,15 +122,16 @@ async function handleAccountsBalance(req, res) {
   try {
     const accounts = await store.listAccounts(req.user.id);
     const publicAccounts = accounts.filter((a) => !a.is_default);
-    const totalBalance = publicAccounts.reduce((sum, a) => sum + Number(a.balance || 0), 0);
-    const totalAssets = publicAccounts.filter((a) => a.type <= 2).reduce((sum, a) => sum + Number(a.balance || 0), 0);
-    const totalLiabilities = publicAccounts.filter((a) => a.type >= 3).reduce((sum, a) => sum + Math.abs(Number(a.balance || 0)), 0);
+    // Somas em centavos inteiros: o pg devolve NUMERIC como string e somar com Number() acumula erro.
+    const totalBalance = sumMoney(publicAccounts.map((a) => a.balance));
+    const totalAssets = sumMoney(publicAccounts.filter((a) => a.type <= 2).map((a) => a.balance));
+    const totalLiabilities = sumMoney(publicAccounts.filter((a) => a.type >= 3).map((a) => Math.abs(toCents(a.balance)) / 100));
 
     sendJson(res, 200, {
       totalBalance,
       totalAssets,
       totalLiabilities,
-      netWorth: totalAssets - totalLiabilities,
+      netWorth: subtractMoney(totalAssets, totalLiabilities),
       accountsCount: publicAccounts.length,
       currency: 'BRL',
       lastUpdated: new Date().toISOString(),
@@ -345,7 +347,7 @@ function handleAnalyticsSummary(req, res, { params, query }) {
     .then((summary) => {
       const totalIncome = Number(summary.total_income || 0);
       const totalExpenses = Number(summary.total_expenses || 0);
-      const netSavings = totalIncome - totalExpenses;
+      const netSavings = subtractMoney(totalIncome, totalExpenses);
       const savingsRate = totalIncome > 0 ? (netSavings / totalIncome) * 100 : 0;
 
       logger.info('analytics.summary', { query });
