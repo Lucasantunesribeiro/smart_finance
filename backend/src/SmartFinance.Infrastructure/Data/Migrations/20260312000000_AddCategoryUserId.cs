@@ -1,34 +1,40 @@
 using System;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace SmartFinance.Infrastructure.Data.Migrations
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// Adiciona Categories.UserId.
+    /// Até a versão anterior este arquivo não tinha os atributos [DbContext]/[Migration] (não havia
+    /// .Designer.cs), então o EF nunca o aplicava e a migration seguinte (AddOutboxMessaging) falhava
+    /// em banco novo com "column UserId of relation Categories does not exist".
+    /// O SQL é idempotente porque bancos existentes podem já ter a coluna criada por outro caminho.
+    /// </summary>
+    [DbContext(typeof(SmartFinanceDbContext))]
+    [Migration("20260312000000_AddCategoryUserId")]
     public partial class AddCategoryUserId : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<Guid>(
-                name: "UserId",
-                table: "Categories",
-                type: "uuid",
-                nullable: true);
+            migrationBuilder.Sql(
+                @"ALTER TABLE ""Categories"" ADD COLUMN IF NOT EXISTS ""UserId"" uuid NULL;");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Categories_UserId",
-                table: "Categories",
-                column: "UserId");
+            migrationBuilder.Sql(
+                @"CREATE INDEX IF NOT EXISTS ""IX_Categories_UserId"" ON ""Categories"" (""UserId"");");
 
-            migrationBuilder.AddForeignKey(
-                name: "FK_Categories_Users_UserId",
-                table: "Categories",
-                column: "UserId",
-                principalTable: "Users",
-                principalColumn: "Id",
-                onDelete: ReferentialAction.SetNull);
+            migrationBuilder.Sql(@"
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_Categories_Users_UserId') THEN
+        ALTER TABLE ""Categories""
+            ADD CONSTRAINT ""FK_Categories_Users_UserId"" FOREIGN KEY (""UserId"")
+            REFERENCES ""Users"" (""Id"") ON DELETE SET NULL;
+    END IF;
+END $$;");
         }
 
         /// <inheritdoc />
