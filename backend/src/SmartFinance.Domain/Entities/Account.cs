@@ -15,4 +15,27 @@ public class Account : BaseAuditableEntity
 
     public virtual User User { get; set; } = null!;
     public virtual ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
+
+    /// <summary>
+    /// Efeito de uma transação sobre o saldo: receita soma, despesa subtrai.
+    /// Transferências não alteram o saldo aqui (não há conta de destino modelada).
+    /// </summary>
+    public static decimal BalanceEffect(TransactionType type, decimal amount) => type switch
+    {
+        TransactionType.Income => amount,
+        TransactionType.Expense => -amount,
+        _ => 0m
+    };
+
+    /// <summary>Aplica a transação ao saldo, arredondando para centavos.</summary>
+    public void ApplyTransaction(TransactionType type, decimal amount)
+    {
+        Balance = Money.NormalizeSigned(Balance + BalanceEffect(type, amount));
+    }
+
+    /// <summary>Desfaz o efeito de uma transação aplicada anteriormente.</summary>
+    public void RevertTransaction(TransactionType type, decimal amount)
+    {
+        Balance = Money.NormalizeSigned(Balance - BalanceEffect(type, amount));
+    }
 }

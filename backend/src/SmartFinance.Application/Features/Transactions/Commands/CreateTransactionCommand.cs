@@ -3,6 +3,7 @@ using System.Text.Json;
 using MediatR;
 using SmartFinance.Application.Common.DTOs;
 using SmartFinance.Application.Common.Utils;
+using SmartFinance.Domain.Common;
 using SmartFinance.Domain.Constants;
 using SmartFinance.Domain.Entities;
 using SmartFinance.Domain.Enums;
@@ -46,6 +47,9 @@ public class CreateTransactionCommandHandler : IRequestHandler<CreateTransaction
     {
         _logger.LogInformation("Creating transaction for user: {UserId}", request.UserId);
 
+        // Valor sempre positivo e arredondado para centavos; o tipo define o sinal no saldo.
+        var amount = Money.NormalizePositiveAmount(request.Amount);
+
         // Convert string AccountId to Guid
         if (!Guid.TryParse(request.AccountId, out var accountId))
         {
@@ -74,7 +78,7 @@ public class CreateTransactionCommandHandler : IRequestHandler<CreateTransaction
         var transactionDate = DateTimeUtils.NormalizeToUtc(request.TransactionDate);
         var transaction = new Transaction
         {
-            Amount = request.Amount,
+            Amount = amount,
             Description = request.Description,
             TransactionDate = transactionDate,
             Type = request.Type,
@@ -113,15 +117,7 @@ public class CreateTransactionCommandHandler : IRequestHandler<CreateTransaction
 
     private async Task UpdateAccountBalance(Account account, Transaction transaction, CancellationToken cancellationToken)
     {
-        switch (transaction.Type)
-        {
-            case TransactionType.Income:
-                account.Balance += transaction.Amount;
-                break;
-            case TransactionType.Expense:
-                account.Balance -= transaction.Amount;
-                break;
-        }
+        account.ApplyTransaction(transaction.Type, transaction.Amount);
 
         await _unitOfWork.Repository<Account>().UpdateAsync(account, cancellationToken);
     }

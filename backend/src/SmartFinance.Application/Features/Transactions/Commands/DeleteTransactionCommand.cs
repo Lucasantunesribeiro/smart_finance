@@ -62,15 +62,7 @@ namespace SmartFinance.Application.Features.Transactions.Commands
             if (account != null)
             {
                 // Revert the transaction effect on account balance
-                switch (transaction.Type)
-                {
-                    case Domain.Enums.TransactionType.Income:
-                        account.Balance -= originalAmount;
-                        break;
-                    case Domain.Enums.TransactionType.Expense:
-                        account.Balance += originalAmount;
-                        break;
-                }
+                account.RevertTransaction(transaction.Type, originalAmount);
 
                 await _unitOfWork.Repository<Account>().UpdateAsync(account, cancellationToken);
                 _logger.LogInformation("Account balance updated for account {AccountId}: {Balance}", accountId, account.Balance);
