@@ -19,9 +19,15 @@ public class JwtTokenService : IJwtTokenService
     public JwtTokenService(IConfiguration configuration)
     {
         _configuration = configuration;
-        _secretKey = _configuration["Jwt:SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
-        _issuer = _configuration["Jwt:Issuer"] ?? throw new InvalidOperationException("JWT Issuer not configured");
-        _audience = _configuration["Jwt:Audience"] ?? throw new InvalidOperationException("JWT Audience not configured");
+        // Aceita tanto Jwt:* (appsettings / Jwt__SecretKey) quanto JWT_* (docker-compose.yml, render.yaml).
+        // Antes só Jwt:SecretKey era lido aqui, e o compose padrão (que define JWT_SECRET_KEY)
+        // subia a API mas todo login respondia 500.
+        _secretKey = ReadSetting(_configuration, "Jwt:SecretKey", "JWT_SECRET_KEY")
+            ?? throw new InvalidOperationException("JWT SecretKey not configured");
+        _issuer = ReadSetting(_configuration, "Jwt:Issuer", "JWT_ISSUER")
+            ?? throw new InvalidOperationException("JWT Issuer not configured");
+        _audience = ReadSetting(_configuration, "Jwt:Audience", "JWT_AUDIENCE")
+            ?? throw new InvalidOperationException("JWT Audience not configured");
     }
 
     public string GenerateToken(Guid userId, string username, string role)
@@ -146,5 +152,20 @@ public class JwtTokenService : IJwtTokenService
         {
             throw new SecurityTokenException("Invalid token");
         }
+    }
+
+    /// <summary>Primeiro valor não vazio entre as chaves informadas.</summary>
+    public static string? ReadSetting(IConfiguration configuration, params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            var value = configuration[key];
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+        }
+
+        return null;
     }
 }

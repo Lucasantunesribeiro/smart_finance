@@ -132,7 +132,9 @@ if (rabbitMqOptions.Enabled)
     builder.Services.AddHostedService<TransactionCreatedConsumerService>();
 }
 
-var jwtSecret = builder.Configuration["Jwt:SecretKey"] ?? Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
+var jwtSecret = JwtTokenService.ReadSetting(builder.Configuration, "Jwt:SecretKey", "JWT_SECRET_KEY");
+var jwtIssuer = JwtTokenService.ReadSetting(builder.Configuration, "Jwt:Issuer", "JWT_ISSUER");
+var jwtAudience = JwtTokenService.ReadSetting(builder.Configuration, "Jwt:Audience", "JWT_AUDIENCE");
 if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret.Trim().Length < 32)
 {
     throw new InvalidOperationException("JWT Secret Key is not configured or is too short.");
@@ -147,8 +149,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
             ClockSkew = TimeSpan.Zero
         };
