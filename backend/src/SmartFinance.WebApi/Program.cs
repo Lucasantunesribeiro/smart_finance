@@ -336,14 +336,10 @@ using (var scope = app.Services.CreateScope())
             context.Database.EnsureCreated();
         }
 
-        var demoUser = await context.Users.FirstOrDefaultAsync(u => u.Email == "test@smartfinance.com");
-        if (demoUser != null && demoUser.PasswordHash == "hashed_password_for_test")
-        {
-            demoUser.PasswordHash = passwordHasher.HashPassword("SmartFinance123!");
-            demoUser.UpdatedAt = DateTime.UtcNow;
-            await context.SaveChangesAsync();
-            logger.LogInformation("Updated demo user password hash for the canonical .NET auth flow");
-        }
+        // Usuário de demonstração: só com DEMO_SEED=true e senha vinda de DEMO_USER_PASSWORD.
+        var demoSeedOptions = DemoSeedOptions.FromEnvironment(Environment.GetEnvironmentVariable);
+        var demoSeedOutcome = await new DemoDataSeeder(context, passwordHasher, logger).SeedAsync(demoSeedOptions);
+        logger.LogInformation("Demo seed: {Outcome}", demoSeedOutcome);
 
         logger.LogInformation("Database initialization completed successfully");
     }

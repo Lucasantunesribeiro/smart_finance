@@ -214,53 +214,10 @@ public class SmartFinanceDbContext : DbContext
 
     private void SeedData(ModelBuilder modelBuilder)
     {
-        // Seed default user
-        var defaultUserId = Guid.Parse("244aaa4d-8b07-4e4d-89f9-09281b73b24f"); // Default test user ID
-        var defaultUser = new User
-        {
-            Id = defaultUserId,
-            Email = "test@smartfinance.com",
-            PasswordHash = "NirLg8WLHCBtY/Bxyq2li7B2TbiBNBuhxw8Fqg/mfFET5k0m4FD06dv//48hqA48",
-            FirstName = "Test",
-            LastName = "User",
-            Role = UserRole.User,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow,
-            CreatedBy = "system",
-            UpdatedBy = "system"
-        };
-        var defaultAccounts = new[]
-        {
-            new Account
-            {
-                Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-                Name = "Main Account",
-                Type = AccountType.Checking,
-                Balance = 0,
-                Currency = "BRL",
-                IsActive = true,
-                UserId = defaultUserId,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
-                CreatedBy = "system",
-                UpdatedBy = "system"
-            },
-            new Account
-            {
-                Id = Guid.Parse("00000000-0000-0000-0000-000000000002"),
-                Name = "Savings Account",
-                Type = AccountType.Savings,
-                Balance = 0,
-                Currency = "BRL",
-                IsActive = true,
-                UserId = defaultUserId,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
-                CreatedBy = "system",
-                UpdatedBy = "system"
-            }
-        };
+        // Só categorias globais (UserId nulo) entram no modelo. O usuário de demonstração
+        // não é mais criado por HasData: ver DemoDataSeeder (DEMO_SEED=true + DEMO_USER_PASSWORD).
+        // Data fixa evita UpdateData espúrio a cada "dotnet ef migrations add".
+        var seedTimestamp = new DateTime(2026, 1, 21, 0, 0, 0, DateTimeKind.Utc);
 
         // Seed default categories
         var defaultCategories = new[]
@@ -273,8 +230,8 @@ public class SmartFinanceDbContext : DbContext
                 Color = "#FF6B6B",
                 Icon = "🍽️",
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
+                CreatedAt = seedTimestamp,
+                UpdatedAt = seedTimestamp,
                 CreatedBy = "system",
                 UpdatedBy = "system"
             },
@@ -286,8 +243,8 @@ public class SmartFinanceDbContext : DbContext
                 Color = "#4ECDC4",
                 Icon = "🚗",
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
+                CreatedAt = seedTimestamp,
+                UpdatedAt = seedTimestamp,
                 CreatedBy = "system",
                 UpdatedBy = "system"
             },
@@ -299,8 +256,8 @@ public class SmartFinanceDbContext : DbContext
                 Color = "#45B7D1",
                 Icon = "🎬",
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
+                CreatedAt = seedTimestamp,
+                UpdatedAt = seedTimestamp,
                 CreatedBy = "system",
                 UpdatedBy = "system"
             },
@@ -312,8 +269,8 @@ public class SmartFinanceDbContext : DbContext
                 Color = "#96CEB4",
                 Icon = "💰",
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
+                CreatedAt = seedTimestamp,
+                UpdatedAt = seedTimestamp,
                 CreatedBy = "system",
                 UpdatedBy = "system"
             },
@@ -325,21 +282,14 @@ public class SmartFinanceDbContext : DbContext
                 Color = "#FFEAA7",
                 Icon = "📦",
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
+                CreatedAt = seedTimestamp,
+                UpdatedAt = seedTimestamp,
                 CreatedBy = "system",
                 UpdatedBy = "system"
             }
         };
 
-        modelBuilder.Entity<User>().HasData(defaultUser);
-        modelBuilder.Entity<Account>().HasData(defaultAccounts);
         modelBuilder.Entity<Category>().HasData(defaultCategories);
-        
-        // Log seed data creation
-        Console.WriteLine("Seed data configured:");
-        Console.WriteLine($"- {defaultAccounts.Length} default accounts");
-        Console.WriteLine($"- {defaultCategories.Length} default categories");
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

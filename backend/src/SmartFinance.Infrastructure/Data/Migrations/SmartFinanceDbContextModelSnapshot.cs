@@ -80,38 +80,6 @@ namespace SmartFinance.Infrastructure.Data.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Accounts");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("00000000-0000-0000-0000-000000000001"),
-                            Balance = 0m,
-                            CreatedAt = new DateTime(2026, 3, 13, 1, 54, 12, 653, DateTimeKind.Utc).AddTicks(6991),
-                            CreatedBy = "system",
-                            Currency = "BRL",
-                            IsActive = true,
-                            IsDeleted = false,
-                            Name = "Main Account",
-                            Type = 0,
-                            UpdatedAt = new DateTime(2026, 3, 13, 1, 54, 12, 653, DateTimeKind.Utc).AddTicks(6992),
-                            UpdatedBy = "system",
-                            UserId = new Guid("244aaa4d-8b07-4e4d-89f9-09281b73b24f")
-                        },
-                        new
-                        {
-                            Id = new Guid("00000000-0000-0000-0000-000000000002"),
-                            Balance = 0m,
-                            CreatedAt = new DateTime(2026, 3, 13, 1, 54, 12, 653, DateTimeKind.Utc).AddTicks(6995),
-                            CreatedBy = "system",
-                            Currency = "BRL",
-                            IsActive = true,
-                            IsDeleted = false,
-                            Name = "Savings Account",
-                            Type = 1,
-                            UpdatedAt = new DateTime(2026, 3, 13, 1, 54, 12, 653, DateTimeKind.Utc).AddTicks(6996),
-                            UpdatedBy = "system",
-                            UserId = new Guid("244aaa4d-8b07-4e4d-89f9-09281b73b24f")
-                        });
                 });
 
             modelBuilder.Entity("SmartFinance.Domain.Entities.Budget", b =>
@@ -283,70 +251,70 @@ namespace SmartFinance.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("11111111-1111-1111-1111-111111111001"),
                             Color = "#FF6B6B",
-                            CreatedAt = new DateTime(2026, 3, 13, 1, 54, 12, 653, DateTimeKind.Utc).AddTicks(7002),
+                            CreatedAt = new DateTime(2026, 1, 21, 0, 0, 0, 0, DateTimeKind.Utc),
                             CreatedBy = "system",
                             Icon = "🍽️",
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Alimentação",
                             Type = 1,
-                            UpdatedAt = new DateTime(2026, 3, 13, 1, 54, 12, 653, DateTimeKind.Utc).AddTicks(7002),
+                            UpdatedAt = new DateTime(2026, 1, 21, 0, 0, 0, 0, DateTimeKind.Utc),
                             UpdatedBy = "system"
                         },
                         new
                         {
                             Id = new Guid("11111111-1111-1111-1111-111111111002"),
                             Color = "#4ECDC4",
-                            CreatedAt = new DateTime(2026, 3, 13, 1, 54, 12, 653, DateTimeKind.Utc).AddTicks(7005),
+                            CreatedAt = new DateTime(2026, 1, 21, 0, 0, 0, 0, DateTimeKind.Utc),
                             CreatedBy = "system",
                             Icon = "🚗",
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Transporte",
                             Type = 1,
-                            UpdatedAt = new DateTime(2026, 3, 13, 1, 54, 12, 653, DateTimeKind.Utc).AddTicks(7006),
+                            UpdatedAt = new DateTime(2026, 1, 21, 0, 0, 0, 0, DateTimeKind.Utc),
                             UpdatedBy = "system"
                         },
                         new
                         {
                             Id = new Guid("11111111-1111-1111-1111-111111111003"),
                             Color = "#45B7D1",
-                            CreatedAt = new DateTime(2026, 3, 13, 1, 54, 12, 653, DateTimeKind.Utc).AddTicks(7009),
+                            CreatedAt = new DateTime(2026, 1, 21, 0, 0, 0, 0, DateTimeKind.Utc),
                             CreatedBy = "system",
                             Icon = "🎬",
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Lazer",
                             Type = 1,
-                            UpdatedAt = new DateTime(2026, 3, 13, 1, 54, 12, 653, DateTimeKind.Utc).AddTicks(7010),
+                            UpdatedAt = new DateTime(2026, 1, 21, 0, 0, 0, 0, DateTimeKind.Utc),
                             UpdatedBy = "system"
                         },
                         new
                         {
                             Id = new Guid("11111111-1111-1111-1111-111111111004"),
                             Color = "#96CEB4",
-                            CreatedAt = new DateTime(2026, 3, 13, 1, 54, 12, 653, DateTimeKind.Utc).AddTicks(7024),
+                            CreatedAt = new DateTime(2026, 1, 21, 0, 0, 0, 0, DateTimeKind.Utc),
                             CreatedBy = "system",
                             Icon = "💰",
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Salário",
                             Type = 0,
-                            UpdatedAt = new DateTime(2026, 3, 13, 1, 54, 12, 653, DateTimeKind.Utc).AddTicks(7025),
+                            UpdatedAt = new DateTime(2026, 1, 21, 0, 0, 0, 0, DateTimeKind.Utc),
                             UpdatedBy = "system"
                         },
                         new
                         {
                             Id = new Guid("11111111-1111-1111-1111-111111111005"),
                             Color = "#FFEAA7",
-                            CreatedAt = new DateTime(2026, 3, 13, 1, 54, 12, 653, DateTimeKind.Utc).AddTicks(7028),
+                            CreatedAt = new DateTime(2026, 1, 21, 0, 0, 0, 0, DateTimeKind.Utc),
                             CreatedBy = "system",
                             Icon = "📦",
                             IsActive = true,
                             IsDeleted = false,
                             Name = "Outros",
                             Type = 1,
-                            UpdatedAt = new DateTime(2026, 3, 13, 1, 54, 12, 653, DateTimeKind.Utc).AddTicks(7029),
+                            UpdatedAt = new DateTime(2026, 1, 21, 0, 0, 0, 0, DateTimeKind.Utc),
                             UpdatedBy = "system"
                         });
                 });
@@ -717,23 +685,6 @@ namespace SmartFinance.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("Users");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("244aaa4d-8b07-4e4d-89f9-09281b73b24f"),
-                            CreatedAt = new DateTime(2026, 3, 13, 1, 54, 12, 653, DateTimeKind.Utc).AddTicks(6981),
-                            CreatedBy = "system",
-                            Email = "test@smartfinance.com",
-                            FirstName = "Test",
-                            IsActive = true,
-                            IsDeleted = false,
-                            LastName = "User",
-                            PasswordHash = "NirLg8WLHCBtY/Bxyq2li7B2TbiBNBuhxw8Fqg/mfFET5k0m4FD06dv//48hqA48",
-                            Role = 0,
-                            UpdatedAt = new DateTime(2026, 3, 13, 1, 54, 12, 653, DateTimeKind.Utc).AddTicks(6982),
-                            UpdatedBy = "system"
-                        });
                 });
 
             modelBuilder.Entity("SmartFinance.Domain.Entities.Account", b =>
