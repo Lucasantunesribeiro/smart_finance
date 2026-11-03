@@ -1,51 +1,16 @@
-# GitHub Actions Workflows
+# Workflows do GitHub Actions
 
-## Required Secrets
+| Workflow | Gatilhos | O que faz |
+|---|---|---|
+| `ci.yml` | `pull_request` e `push` em `main` | Build e testes do backend .NET, lint/type-check/testes/build do frontend, testes do microservice |
+| `codeql.yml` | `pull_request`, `push` em `main`, semanal | Análise CodeQL (JavaScript e C#) |
+| `security-scan.yml` | diário, manual, `push` em `main` com mudança em `package*.json`/`Dockerfile` | Trivy, `npm audit` e Gitleaks |
+| `deploy.yml` | `push` em `main` e manual | Deploy via SSH na instância EC2 (não roda em pull request) |
+| `deploy-github-pages.yml` | apenas manual | Build estático para GitHub Pages (desativado na prática) |
 
-Configure these secrets in your GitHub repository settings:
+## Segredos usados
 
-### Deployment Secrets
-- `EC2_SSH_PRIVATE_KEY`: Private key for SSH access to EC2 instance
-- `EC2_HOST`: Public IP or DNS name of your EC2 instance
+- `EC2_HOST`, `EC2_SSH_KEY`: acesso SSH do `deploy.yml`.
+- `GITHUB_TOKEN`: fornecido pelo GitHub.
 
-### Application Secrets
-- `JWT_SECRET`: Secret key for JWT token signing
-- `SQL_PASSWORD`: Password for SQL database
-- `MONGO_PASSWORD`: Password for MongoDB
-- `REDIS_PASSWORD`: Password for Redis
-- `GRAFANA_PASSWORD`: Password for Grafana admin user
-
-### Optional Secrets
-- `SLACK_WEBHOOK`: Webhook URL for Slack notifications
-
-## Workflows
-
-### ci-cd.yml
-Main CI/CD pipeline that runs on push and pull requests:
-- Tests .NET backend
-- Tests Next.js frontend  
-- Tests payment microservice
-- Runs security scans
-- Builds and pushes Docker images (on main branch)
-- Deploys to staging/production
-
-### deploy.yml
-Production deployment workflow:
-- Builds and tests all components
-- Deploys to EC2 instance
-- Runs health checks
-- Supports rollback on failure
-
-### security-scan.yml
-Scheduled security scanning:
-- Runs daily at 2 AM UTC
-- Scans for vulnerabilities
-- Checks dependencies
-- Uploads results to GitHub Security tab
-
-## Usage
-
-1. Push to `develop` branch triggers staging deployment
-2. Push to `main` branch triggers production deployment
-3. Manual deployment can be triggered via workflow_dispatch
-4. Security scans run automatically on schedule
+Os segredos da aplicação ficam no `.env` do servidor, fora do repositório (ver `.env.example`).
