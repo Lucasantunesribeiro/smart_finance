@@ -2,6 +2,7 @@
 
 import { AlertTriangle, X, Trash2 } from 'lucide-react';
 import { Category } from '@/types/category';
+import { formatCurrency } from '@/lib/utils';
 
 interface DeleteConfirmationModalProps {
   isOpen: boolean;
@@ -52,7 +53,7 @@ export const DeleteConfirmationModal = ({ isOpen, onClose, category, onConfirm, 
               <div>
                 <h3 className="font-semibold text-gray-900">{category.name}</h3>
                 <p className="text-sm text-gray-500">
-                  {category.transactionCount} transações • Total: R$ {category.totalAmount.toFixed(2)}
+                  {category.transactionCount} transações • Total: {formatCurrency(category.totalAmount)}
                 </p>
               </div>
             </div>

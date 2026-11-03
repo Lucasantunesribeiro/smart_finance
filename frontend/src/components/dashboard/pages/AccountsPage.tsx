@@ -22,6 +22,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/locale-context';
 import { extractErrorMessage } from '@/lib/errorHelpers';
+import { parseMoneyInput } from '@/lib/money';
 
 export const AccountsPage = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -211,7 +212,7 @@ export const AccountsPage = () => {
               type="number"
               step="0.01"
               value={formData.balance}
-              onChange={(e) => setFormData(prev => ({ ...prev, balance: parseFloat(e.target.value) || 0 }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, balance: parseMoneyInput(e.target.value) ?? 0 }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="0.00"
             />
@@ -287,7 +288,7 @@ export const AccountsPage = () => {
               type="number"
               step="0.01"
               value={formData.balance}
-              onChange={(e) => setFormData(prev => ({ ...prev, balance: parseFloat(e.target.value) || 0 }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, balance: parseMoneyInput(e.target.value) ?? 0 }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="0.00"
             />

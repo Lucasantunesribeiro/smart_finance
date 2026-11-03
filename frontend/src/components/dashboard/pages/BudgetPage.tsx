@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { budgetService } from '@/services/budgetService';
 import { categoryService } from '@/services/categoryService';
 import { formatCurrency } from '@/lib/utils';
+import { parseMoneyInput, subtractMoney, sumMoney } from '@/lib/money';
 import { Plus, Edit, Trash2, AlertCircle, Target, Calendar, DollarSign } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { BudgetPeriod, Budget, CreateBudgetRequest, UpdateBudgetRequest } from '@/types/budget';
@@ -185,8 +186,9 @@ export const BudgetPage = () => {
     return options[period] || options[BudgetPeriod.Monthly];
   };
 
-  const totalAllocated = budgets.reduce((sum, budget) => sum + (budget.allocated || 0), 0);
-  const totalSpent = budgets.reduce((sum, budget) => sum + (budget.spent || 0), 0);
+  // Somas em centavos inteiros (sem erro de ponto flutuante).
+  const totalAllocated = sumMoney(budgets.map(budget => budget.allocated));
+  const totalSpent = sumMoney(budgets.map(budget => budget.spent));
   const overBudgetCount = budgets.filter(budget => (budget.percentage || 0) >= 90).length;
 
   return (
@@ -264,7 +266,7 @@ export const BudgetPage = () => {
                 {localize('Saldo Restante', 'Remaining Balance')}
               </p>
               <p className="text-2xl font-bold text-green-600">
-                {formatCurrency(totalAllocated - totalSpent)}
+                {formatCurrency(subtractMoney(totalAllocated, totalSpent))}
               </p>
             </div>
             <Calendar className="h-8 w-8 text-green-600" />
@@ -408,7 +410,7 @@ export const BudgetPage = () => {
                 <input
                   type="number"
                   value={formData.allocated}
-                  onChange={(e) => setFormData({ ...formData, allocated: parseFloat(e.target.value) || 0 })}
+                  onChange={(e) => setFormData({ ...formData, allocated: parseMoneyInput(e.target.value) ?? 0 })}
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="0,00"
                 />
@@ -498,7 +500,7 @@ export const BudgetPage = () => {
                 <input
                   type="number"
                   value={formData.allocated}
-                  onChange={(e) => setFormData({ ...formData, allocated: parseFloat(e.target.value) || 0 })}
+                  onChange={(e) => setFormData({ ...formData, allocated: parseMoneyInput(e.target.value) ?? 0 })}
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="0,00"
                 />

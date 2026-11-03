@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/locale-context';
+import { parseMoneyInput } from '@/lib/money';
 import { Pencil } from 'lucide-react';
 
 interface EditTransactionDialogProps {
@@ -105,7 +106,7 @@ export const EditTransactionDialog = ({ transaction, onSuccess, children }: Edit
     try {
       const updateData = {
         description: formData.description.trim(),
-        amount: parseFloat(formData.amount),
+        amount: parseMoneyInput(formData.amount) ?? 0,
         type: parseInt(formData.type!) as TransactionType,
         categoryId: formData.categoryId || undefined,
         accountId: formData.accountId,
