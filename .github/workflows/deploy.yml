@@ -1,8 +1,10 @@
 name: Deploy SmartFinance to EC2
 
+# Desativado no push: a instância EC2 está desligada e cada push na main falhava
+# com "dial tcp ***:22: i/o timeout". O dono não mantém mais infra paga na AWS.
+# O deploy gratuito está descrito no README ("Deploy gratuito": Render + Neon + Vercel).
+# Para usar EC2 de novo, rode manualmente (Actions > Deploy SmartFinance to EC2 > Run workflow).
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
 
 permissions:
