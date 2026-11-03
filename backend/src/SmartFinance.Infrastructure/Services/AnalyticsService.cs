@@ -1,3 +1,4 @@
+using SmartFinance.Domain.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SmartFinance.Application.Common.DTOs;
@@ -107,8 +108,8 @@ public class AnalyticsService : IAnalyticsService
             },
             Changes = new AnalyticsChangeDto
             {
-                IncomeChange = prevIncome > 0 ? (currentIncome - prevIncome) / prevIncome * 100 : 0,
-                ExpensesChange = prevExpenses > 0 ? (currentExpenses - prevExpenses) / prevExpenses * 100 : 0
+                IncomeChange = Money.PercentageChange(currentIncome, prevIncome),
+                ExpensesChange = Money.PercentageChange(currentExpenses, prevExpenses)
             },
             TopCategories = categoryTrends
         };
@@ -152,10 +153,10 @@ public class AnalyticsService : IAnalyticsService
         var totalIncome = transactions.Where(t => t.Type == TransactionType.Income).Sum(t => t.Amount);
         var totalExpenses = transactions.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount);
         var transactionCount = transactions.Count;
-        var avgAmount = transactionCount > 0 ? transactions.Average(t => t.Amount) : 0m;
+        var avgAmount = Money.Average(transactions.Sum(t => t.Amount), transactionCount);
         var largestIncome = transactions.Where(t => t.Type == TransactionType.Income).Select(t => t.Amount).DefaultIfEmpty(0).Max();
         var largestExpense = transactions.Where(t => t.Type == TransactionType.Expense).Select(t => t.Amount).DefaultIfEmpty(0).Max();
-        var savingsRate = totalIncome > 0 ? (totalIncome - totalExpenses) / totalIncome * 100 : 0m;
+        var savingsRate = totalIncome > 0 ? Money.Percentage(totalIncome - totalExpenses, totalIncome) : 0m;
 
         var categories = transactions
             .GroupBy(t => new { t.CategoryId, t.CategoryName })
@@ -165,7 +166,7 @@ public class AnalyticsService : IAnalyticsService
                 Name = g.Key.CategoryName,
                 Total = g.Sum(t => t.Amount),
                 Count = g.Count(),
-                Percentage = totalExpenses > 0 ? Math.Round(g.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount) / totalExpenses * 100, 2) : 0m
+                Percentage = Money.Percentage(g.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount), totalExpenses)
             })
             .OrderByDescending(c => c.Total)
             .ToList();
@@ -185,11 +186,11 @@ public class AnalyticsService : IAnalyticsService
             TotalExpenses = totalExpenses,
             NetAmount = totalIncome - totalExpenses,
             TransactionCount = transactionCount,
-            AvgTransactionAmount = Math.Round(avgAmount, 2),
+            AvgTransactionAmount = avgAmount,
             LargestIncome = largestIncome,
             LargestExpense = largestExpense,
-            SavingsRate = Math.Round(savingsRate, 2),
-            BudgetUtilization = totalBudgetAmount > 0 ? Math.Round(totalBudgetSpent / totalBudgetAmount * 100, 2) : 0m,
+            SavingsRate = savingsRate,
+            BudgetUtilization = Money.Percentage(totalBudgetSpent, totalBudgetAmount),
             Categories = categories,
             TopCategories = categories.Take(5).ToList()
         };

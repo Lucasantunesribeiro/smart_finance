@@ -98,6 +98,11 @@ public class AccountsController : ControllerBase
             var account = await _accountService.CreateAccountAsync(userId, request, cancellationToken);
             return CreatedAtAction(nameof(GetAccountById), new { accountId = account.Id }, account);
         }
+        catch (ArgumentException ex)
+        {
+            // Saldo fora do intervalo suportado por numeric(18,2).
+            return BadRequest(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating account");
@@ -137,6 +142,11 @@ public class AccountsController : ControllerBase
             }
 
             return Ok(account);
+        }
+        catch (ArgumentException ex)
+        {
+            // Saldo fora do intervalo suportado por numeric(18,2).
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {

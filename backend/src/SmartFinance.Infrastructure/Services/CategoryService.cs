@@ -1,3 +1,4 @@
+using SmartFinance.Domain.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SmartFinance.Application.Common.DTOs;
@@ -69,12 +70,22 @@ public class CategoryService : ICategoryService
             .ToListAsync(cancellationToken);
 
         var categoryIds = rawItems.Select(c => c.Id).ToList();
-        var transactionStats = await _context.Transactions
+        var categoryTransactions = _context.Transactions
             .AsNoTracking()
-            .Where(t => t.UserId == userId && t.CategoryId.HasValue && categoryIds.Contains(t.CategoryId.Value) && !t.IsDeleted)
-            .GroupBy(t => t.CategoryId!.Value)
-            .Select(g => new { CategoryId = g.Key, Count = g.Count(), TotalAmount = g.Sum(t => (double)t.Amount) })
-            .ToListAsync(cancellationToken);
+            .Where(t => t.UserId == userId && t.CategoryId.HasValue && categoryIds.Contains(t.CategoryId.Value) && !t.IsDeleted);
+
+        // Totais por categoria em decimal. SQLite não agrega decimal no banco, então agrupa em memória.
+        var transactionStats = _context.Database.IsSqlite()
+            ? (await categoryTransactions
+                    .Select(t => new { CategoryId = t.CategoryId!.Value, t.Amount })
+                    .ToListAsync(cancellationToken))
+                .GroupBy(t => t.CategoryId)
+                .Select(g => new { CategoryId = g.Key, Count = g.Count(), TotalAmount = g.Sum(t => t.Amount) })
+                .ToList()
+            : await categoryTransactions
+                .GroupBy(t => t.CategoryId!.Value)
+                .Select(g => new { CategoryId = g.Key, Count = g.Count(), TotalAmount = g.Sum(t => t.Amount) })
+                .ToListAsync(cancellationToken);
 
         var statsMap = transactionStats.ToDictionary(s => s.CategoryId, s => s);
         var items = rawItems.Select(c =>
@@ -92,7 +103,7 @@ public class CategoryService : ICategoryService
                 ParentName = c.ParentName,
                 IsActive = c.IsActive,
                 TransactionCount = stats?.Count ?? 0,
-                TotalAmount = stats != null ? Convert.ToDecimal(stats.TotalAmount) : 0m,
+                TotalAmount = stats != null ? stats.TotalAmount : 0m,
                 CreatedAt = c.CreatedAt.ToString("o"),
                 UpdatedAt = c.UpdatedAt.ToString("o")
             };
@@ -266,14 +277,14 @@ public class CategoryService : ICategoryService
             .Where(t => t.UserId == userId && t.CategoryId == categoryId && !t.IsDeleted);
 
         var totalTransactions = await transactions.CountAsync(cancellationToken);
-        var totalAmount = Convert.ToDecimal(await transactions.SumAsync(t => (double?)t.Amount, cancellationToken) ?? 0d);
+        var totalAmount = await transactions.SumMoneyAsync(_context, t => t.Amount, cancellationToken);
         var lastTransactionDate = await transactions.MaxAsync(t => (DateTime?)t.TransactionDate, cancellationToken);
 
         return new CategoryStatsDto
         {
             TotalTransactions = totalTransactions,
             TotalAmount = totalAmount,
-            AverageAmount = totalTransactions > 0 ? totalAmount / totalTransactions : 0m,
+            AverageAmount = Money.Average(totalAmount, totalTransactions),
             LastTransaction = lastTransactionDate?.ToString("o")
         };
     }
