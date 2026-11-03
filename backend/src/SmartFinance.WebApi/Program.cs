@@ -117,7 +117,6 @@ builder.Services.AddScoped<IFinanceHubService, FinanceHubService>();
 
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(SmartFinance.Application.AssemblyReference.Assembly));
 
-builder.Services.AddAutoMapper(typeof(Program).Assembly);
 builder.Services.Configure<RabbitMqOptions>(builder.Configuration.GetSection(RabbitMqOptions.ConfigurationSectionName));
 
 var rabbitMqOptions = builder.Configuration.GetSection(RabbitMqOptions.ConfigurationSectionName).Get<RabbitMqOptions>() ?? new RabbitMqOptions();
